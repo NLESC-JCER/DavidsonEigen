@@ -1,9 +1,6 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Core>
-#include <Eigen/QR>
-#include <Eigen/Eigenvalues>
-#include <chrono>
 #include "DavidsonOperator.hpp"
 
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
@@ -26,6 +23,8 @@ class DavidsonSolver
 		void set_iter_max(int set_iter_max);
 		void set_tolerance(double tol);
 		void set_max_search_space(int size);
+		void set_jacobi_correction();
+		void set_jacobi_linsolve(int method);
 
 		Vect eigenvalues();
 		Mat eigenvectors();
@@ -39,6 +38,9 @@ class DavidsonSolver
 		double tol;
 		int max_search_space;
 		bool _debug_ = true;
+
+		bool jacobi_correction=false;
+		int jacobi_linsolve = 0;
 
 		Vect _eigenvalues;
 		Mat _eigenvectors; 

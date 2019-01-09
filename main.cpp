@@ -32,13 +32,14 @@ Mat init_matrix(int N)
 int main (int argc, char *argv[]){
 
     // parse the input
-    cxxopts::Options options(argv[0],  "gemm example using eigen");
+    cxxopts::Options options(argv[0],  "Test of the Davidosn routine");
     options.positional_help("[optional args]").show_positional_help();
     options.add_options()("size", "dimension of the matrix", cxxopts::value<int>(), "100");
 
     auto result = options.parse(argc,argv);
     int size = result["size"].as<int>();
 
+    // number of eignvalues required
     int neigen = 5;
 
     // chrono    
@@ -48,9 +49,12 @@ int main (int argc, char *argv[]){
     std::cout << "Matrix size : " << size << "x" << size << std::endl;
     std::cout << "Num Threads : " <<  Eigen::nbThreads() << std::endl;
 
+    //=======================================
+    // Full matrix
+    //=======================================
+
     // init the matrix
     Mat A = init_matrix(size);
-    std::cout << A.block(0,0,5,5) << std::endl;
 
     // start the solver
     start = std::chrono::system_clock::now();
@@ -59,20 +63,27 @@ int main (int argc, char *argv[]){
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
     std::cout << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
-    std::cout << DS.eigenvalues() << std::endl;
-
-    // normal eigensolver
+    
+    // Eigen solver 
     start = std::chrono::system_clock::now();
     Eigen::SelfAdjointEigenSolver<Mat> es(A);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
-    std::cout << "Eigen               : " << elapsed_time.count() << " secs" <<  std::endl;
-    std::cout << es.eigenvalues().head(neigen) << std::endl;
+    std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;
+
+    auto dseig = DS.eigenvalues();
+    auto eig = es.eigenvalues().head(neigen);
+    std::cout << "Davidson \tEigen" << std::endl;
+    for(int i=0; i< neigen; i++)
+        printf("%8.7f \t%8.7f\n",dseig(i),eig(i));
+        
+    //=======================================
+    // Matrix Free
+    //=======================================
 
     // Create Operator
     DavidsonOperator Aop(size);
     Mat Afull = Aop.get_full_mat();
-    std::cout << Afull.block(0,0,5,5) << std::endl;
 
     // Davidosn Solver
     start = std::chrono::system_clock::now();
@@ -81,18 +92,18 @@ int main (int argc, char *argv[]){
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
     std::cout << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
-    std::cout << DSop.eigenvalues() << std::endl;
-
+    
     // normal eigensolver
     start = std::chrono::system_clock::now();
     Eigen::SelfAdjointEigenSolver<Mat> es2(Afull);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
-    std::cout << "Eigen               : " << elapsed_time.count() << " secs" <<  std::endl;
-    std::cout << es2.eigenvalues().head(neigen) << std::endl;
+    std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;
 
-
-
-
+    auto dseigop = DSop.eigenvalues();
+    auto eig2 = es2.eigenvalues().head(neigen);
+    std::cout << "Davidson \tEigen" << std::endl;
+    for(int i=0; i< neigen; i++)
+        printf("%8.7f \t%8.7f\n",dseigop(i),eig2(i));
 
 }

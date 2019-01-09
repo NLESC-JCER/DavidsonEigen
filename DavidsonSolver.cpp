@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <Eigen/QR>
 #include <Eigen/Eigenvalues>
+#include <Eigen/IterativeLinearSolvers>
 #include <chrono>
 #include "DavidsonSolver.hpp"
 
@@ -16,37 +17,57 @@ DavidsonSolver::DavidsonSolver(int iter_max) : iter_max(iter_max) , tol(1E-6), m
 DavidsonSolver::DavidsonSolver(int iter_max, double tol) : iter_max(iter_max), tol(tol), max_search_space(100) { }
 DavidsonSolver::DavidsonSolver(int iter_max, double tol, int max_search_space) : iter_max(iter_max), tol(tol), max_search_space(max_search_space) { }
 
-void DavidsonSolver::set_iter_max(int N) { iter_max = N; }
-void DavidsonSolver::set_tolerance(double eps) { tol = eps; }
-void DavidsonSolver::set_max_search_space(int N) { max_search_space = N;}
+void DavidsonSolver::set_iter_max(int N) { this->iter_max = N; }
+void DavidsonSolver::set_tolerance(double eps) { this->tol = eps; }
+void DavidsonSolver::set_max_search_space(int N) { this->max_search_space = N;}
+void DavidsonSolver::set_jacobi_correction() { this->jacobi_correction = true; }
+void DavidsonSolver::set_jacobi_linsolve(int method) {this->jacobi_linsolve = method;}
 
-Vect DavidsonSolver::eigenvalues() {return _eigenvalues;}
-Mat DavidsonSolver::eigenvectors() {return _eigenvectors;}
+
+
+
+Vect DavidsonSolver::eigenvalues() {return this->_eigenvalues;}
+Mat DavidsonSolver::eigenvectors() {return this->_eigenvectors;}
 
 
 Eigen::ArrayXd DavidsonSolver::_sort_index(Vect V)
 {
-	Eigen::ArrayXd idx = Eigen::ArrayXd::LinSpaced(V.rows(),0,V.rows()-1);
-	std::sort(idx.data(),idx.data()+idx.size(),
-	          [&](int i1, int i2){return V[i1]<V[i2];});
-	return idx;	
+    Eigen::ArrayXd idx = Eigen::ArrayXd::LinSpaced(V.rows(),0,V.rows()-1);
+    std::sort(idx.data(),idx.data()+idx.size(),
+              [&](int i1, int i2){return V[i1]<V[i2];});
+    return idx; 
 }
 
 Mat DavidsonSolver::_get_initial_eigenvectors(Vect d, int size_initial_guess)
 {
 
-	Mat guess = Mat::Zero(d.size(),size_initial_guess);
-	Eigen::ArrayXd idx = DavidsonSolver::_sort_index(d);
+    Mat guess = Mat::Zero(d.size(),size_initial_guess);
+    Eigen::ArrayXd idx = DavidsonSolver::_sort_index(d);
 
-	for (int j=0; j<size_initial_guess;j++)
-		guess(idx(j),j) = 1.0;
+    for (int j=0; j<size_initial_guess;j++)
+        guess(idx(j),j) = 1.0;
 
-	return guess;
+    return guess;
 
 }
 
 void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
 {
+
+    if (this->_debug_)
+    {
+        std::cout << std::endl;
+        std::cout << "===========================" << std::endl; 
+        if(this->jacobi_correction)
+        {
+            std::cout << "= Jacobi-Davidson      " <<  std::endl; 
+            std::cout << "    linsolve : " << this->jacobi_linsolve << std::endl;
+        }
+        else
+            std::cout << "= Davidson (DPR)" <<  std::endl; 
+        std::cout << "===========================" << std::endl;
+        std::cout << std::endl;
+    }
 
     double norm;
     int size = A.rows();
@@ -54,17 +75,17 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
     // if argument not provided we default to 0
     // and set to twice the number of eigenvalues
     if (size_initial_guess == 0)
-    	size_initial_guess = 2*neigen;
+        size_initial_guess = 2*neigen;
 
     int search_space = size_initial_guess;
 
-	// initialize the guess eigenvector
-	Vect Adiag = A.diagonal();    
+    // initialize the guess eigenvector
+    Vect Adiag = A.diagonal();    
     Mat V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
     Mat I = Mat::Identity(size,size);
 
-    // sort the eigenvalues 
-	std::sort(Adiag.data(),Adiag.data()+Adiag.size());
+    // sort the eigenvalues
+    std::sort(Adiag.data(),Adiag.data()+Adiag.size());
 
     // thin matrix for QR
     Mat thinQ;
@@ -80,15 +101,14 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
     std::chrono::time_point<std::chrono::system_clock> start, end, instart, instop;
     std::chrono::duration<double> elapsed_time;
 
+    if (_debug_)
+    {
+        std::cout << "Jacobi correction " << this->jacobi_correction << std::endl;
+        std::cout << "iter\tSearch Space\tNorm" << std::endl;
+    }
     for (int iiter = 0; iiter < iter_max; iiter ++ )
     {
         
-    	if (_debug_)
-    	{
-        	std::cout << "iteration " << iiter << " / " << iter_max << std::endl;
-        	std::cout << "Search Space Size " << V.rows() << "x" << search_space << std::endl;
-        }
-
         // orthogonalise the vectors
         // use the HouseholderQR algorithm of Eigen
         if (iiter>0)
@@ -113,20 +133,50 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
         // compute correction vectors
         // and append to V
         for (int j=0; j<size_initial_guess; j++)
-        {     
-            w = ( (A-lambda(j)*I) * q.col(j) ) / ( lambda(j) - Adiag(j) );
+        {   
+            // jacobi-davidson correction
+            if (this->jacobi_correction)
+            {
+                auto u = q.col(j);
+                auto P = I-u*u.transpose();
+                auto r =  (A-lambda(j)*I) * u;
+                auto projA =  P * (A-lambda(j)*I) * P.transpose();
+
+                // solve the linear system
+                switch(this->jacobi_linsolve)
+                {        
+                    //use cg approximate solver     
+                    case 0: 
+                    {
+                        Eigen::ConjugateGradient<Mat, Eigen::Lower|Eigen::Upper> cg;
+                        cg.compute(projA);
+                        w = cg.solve(r);
+                    }   
+
+                    //use GMRES approximate solver
+                    case 1:
+
+                    //use llt exact solver
+                    case 2: w = projA.llt().solve(r);
+
+                }
+            }
+            // Davidosn diagonally dominant correction
+            else  
+                w = ( (A-lambda(j)*I) * q.col(j) ) / ( lambda(j) - Adiag(j) );
+
+            // append the correction vector to the search space
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
             V.col(V.cols()-1) = w;
-
         }
 
         // check for convergence
         norm = (lambda.head(neigen) - lambda_old).norm();
 
         if(_debug_)
-        	std::cout << "Norm " << norm << " / " << tol << std::endl << std::endl << std::endl;
+            printf("%4d\t%12d\t%4.2e/%.0e\n", iiter,search_space,norm,tol);
         
-        // break if converged update otherwise
+        // break if converged, update otherwise
         if (norm < tol)
             break;
         else
@@ -144,8 +194,8 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
     }
 
     // store the eigenvalues/eigenvectors
-    _eigenvalues = lambda.head(neigen);
-    _eigenvectors = U.block(0,0,U.rows(),neigen);
+    this->_eigenvalues = lambda.head(neigen);
+    this->_eigenvectors = U.block(0,0,U.rows(),neigen);
    
 }
 
@@ -153,24 +203,40 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
 void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_guess)
 {
 
+    if (this->_debug_)
+    {
+        std::cout << std::endl;
+        std::cout << "===========================" << std::endl; 
+        std::cout << "= Matrix Free Method" << std::endl;
+        if(this->jacobi_correction)
+        {
+            std::cout << "= Jacobi-Davidson      " <<  std::endl; 
+            std::cout << "    linsolve : " << this->jacobi_linsolve << std::endl;
+        }
+        else
+            std::cout << "= Davidson (DPR)" <<  std::endl; 
+        std::cout << "===========================" << std::endl;
+        std::cout << std::endl;
+    }
+
     double norm;
     int size = A.OpSize();
 
     // if argument not provided we default to 0
     // and set to twice the number of eigenvalues
     if (size_initial_guess == 0)
-    	size_initial_guess = 2*neigen;
+        size_initial_guess = 2*neigen;
 
     int search_space = size_initial_guess;
 
-	// initialize the guess eigenvector
-	Vect Adiag = A.diagonal();    
+    // initialize the guess eigenvector
+    Vect Adiag = A.diagonal();    
     Mat V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
     Mat I = Mat::Identity(size,size);
 
     // sort the eigenvalues 
     std::cout << "sort eigenvalues" << std::endl;
-	std::sort(Adiag.data(),Adiag.data()+Adiag.size());
+    std::sort(Adiag.data(),Adiag.data()+Adiag.size());
     
     // thin matrix for QR
     Mat thinQ;
@@ -182,15 +248,13 @@ void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_gues
     // temp varialbes 
     Mat U, w, q;
 
+
+    if (_debug_)
+        std::cout << "iter\tSearch Space\tNorm" << std::endl;
+
     for (int iiter = 0; iiter < iter_max; iiter ++ )
     {
         
-    	if (_debug_)
-    	{
-        	std::cout << "iteration " << iiter << " / " << iter_max << std::endl;
-        	std::cout << "Search Space Size " << V.rows() << "x" << search_space << std::endl;
-        }
-
         // orthogonalise the vectors
         // use the HouseholderQR algorithm of Eigen
         if (iiter>0)
@@ -216,7 +280,7 @@ void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_gues
         // and append to V
         for (int j=0; j<size_initial_guess; j++)
         {   
-        	w = ( A.apply_to_vect(q.col(j)) - lambda(j)*q.col(j) ) / ( lambda(j) - Adiag(j) );  
+            w = ( A.apply_to_vect(q.col(j)) - lambda(j)*q.col(j) ) / ( lambda(j) - Adiag(j) );  
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
             V.col(V.cols()-1) = w;
 
@@ -226,7 +290,7 @@ void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_gues
         norm = (lambda.head(neigen) - lambda_old).norm();
 
         if(_debug_)
-        	std::cout << "Norm " << norm << " / " << tol << std::endl << std::endl << std::endl;
+            printf("%4d\t%12d\t%4.2e/%.0e\n", iiter,search_space,norm,tol);
         
         // break if converged update otherwise
         if (norm < tol)
@@ -246,7 +310,7 @@ void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_gues
     }
 
     // store the eigenvalues/eigenvectors
-    _eigenvalues = lambda.head(neigen);
-    _eigenvectors = U.block(0,0,U.rows(),neigen);
+    this->_eigenvalues = lambda.head(neigen);
+    this->_eigenvectors = U.block(0,0,U.rows(),neigen);
    
 }
