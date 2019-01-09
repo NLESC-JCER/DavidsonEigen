@@ -49,6 +49,8 @@ class DavidsonSolver
 
 		Eigen::ArrayXd _sort_index(Vect V);
 		Mat _get_initial_eigenvectors(Vect D, int size);
+		Mat _solve_linear_system(Mat A, Vect b); 
 		Mat _jacobi_orthogonal_correction(Mat Aml, Vect u);
+		Mat _jacobi_orthogonal_correction(DavidsonOperator A, Vect u, double lambda);
 };
 #endif

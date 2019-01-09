@@ -110,6 +110,11 @@ int main (int argc, char *argv[]){
     // Davidosn Solver
     start = std::chrono::system_clock::now();
     DavidsonSolver DSop;
+    if (jocc)
+    {
+        DSop.set_jacobi_correction();
+        DSop.set_jacobi_linsolve(linsolve);
+    }
     DSop.solve(Aop,neigen);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;

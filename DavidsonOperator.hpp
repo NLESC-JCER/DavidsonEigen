@@ -9,10 +9,12 @@ typedef Eigen::Matrix<double,1,Eigen::Dynamic> RowVect;
 #ifndef _DAVIDSON_OP_
 #define _DAVIDSON_OP_
 
-class DavidsonOperator
+
+class DavidsonOperator : public Eigen::EigenBase<Mat>
 {
 	public: 
 
+		// custom API
 		DavidsonOperator(int size);
 
 		Vect apply_to_vect(Vect b);

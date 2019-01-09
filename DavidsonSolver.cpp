@@ -24,9 +24,6 @@ void DavidsonSolver::set_max_search_space(int N) { this->max_search_space = N;}
 void DavidsonSolver::set_jacobi_correction() { this->jacobi_correction = true; }
 void DavidsonSolver::set_jacobi_linsolve(int method) {this->jacobi_linsolve = method;}
 
-
-
-
 Vect DavidsonSolver::eigenvalues() {return this->_eigenvalues;}
 Mat DavidsonSolver::eigenvectors() {return this->_eigenvectors;}
 
@@ -51,10 +48,37 @@ Mat DavidsonSolver::_get_initial_eigenvectors(Vect d, int size_initial_guess)
     return guess;
 }
 
+Mat DavidsonSolver::_solve_linear_system(Mat A, Vect r)
+{
+    Mat w;
+
+    switch(this->jacobi_linsolve)
+    {        
+        //use cg approximate solver     
+        case 0: 
+        {
+            Eigen::ConjugateGradient<Mat, Eigen::Lower|Eigen::Upper> cg;
+            cg.compute(A);
+            w = cg.solve(r);
+        }   
+
+        //use GMRES approximate solver
+        case 1:
+        {
+            Eigen::GMRES<Mat, Eigen::IdentityPreconditioner> gmres;
+            gmres.compute(A);
+            w = gmres.solve(r);
+        }
+
+        //use llt exact solver
+        case 2: w = A.llt().solve(r);
+    }
+
+    return w;
+}
 
 Mat DavidsonSolver::_jacobi_orthogonal_correction(Mat Aml, Vect u)
 {
-    Mat w;
 
     // form the projector 
     Mat P = -u*u.transpose();
@@ -66,31 +90,27 @@ Mat DavidsonSolver::_jacobi_orthogonal_correction(Mat Aml, Vect u)
     // project the matrix
     auto projA =  P * Aml * P.transpose();
 
-    // solve the linear system
-    switch(this->jacobi_linsolve)
-    {        
-        //use cg approximate solver     
-        case 0: 
-        {
-            Eigen::ConjugateGradient<Mat, Eigen::Lower|Eigen::Upper> cg;
-            cg.compute(projA);
-            w = cg.solve(r);
-        }   
+    return DavidsonSolver::_solve_linear_system(projA,r);
+}
 
-        //use GMRES approximate solver
-        case 1:
-        {
-            Eigen::GMRES<Mat, Eigen::IdentityPreconditioner> gmres;
-            gmres.compute(Aml);
-            w = gmres.solve(r);
-        }
+Mat DavidsonSolver::_jacobi_orthogonal_correction(DavidsonOperator A, Vect u, double lambda)
+{
+    Mat w;
 
-        //use llt exact solver
-        case 2: w = projA.llt().solve(r);
+    // form the projector 
+    Mat P = -u*u.transpose();
+    P.diagonal().array() += 1.0;
 
-    }
+    // compute the residue
+    auto r = A.apply_to_vect(u) - lambda*u;
 
-    return w;
+    // project the matrix
+    // P * (A - lambda*I) * P^T
+    Mat projA = A.apply_to_mat(P.transpose());
+    projA -= lambda*P.transpose();
+    projA = P * projA;
+
+    return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
 
@@ -270,7 +290,6 @@ void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_gues
     // temp varialbes 
     Mat U, w, q;
 
-
     if (_debug_)
         std::cout << "iter\tSearch Space\tNorm" << std::endl;
 
@@ -302,7 +321,16 @@ void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_gues
         // and append to V
         for (int j=0; j<size_initial_guess; j++)
         {   
-            w = ( A.apply_to_vect(q.col(j)) - lambda(j)*q.col(j) ) / ( lambda(j) - Adiag(j) );  
+
+            // jacobi orthogonal correction
+            if(this->jacobi_correction)
+                w = DavidsonSolver::_jacobi_orthogonal_correction(A, q.col(j), lambda(j) );
+
+            // DPR correction
+            else
+                w = ( A.apply_to_vect(q.col(j)) - lambda(j)*q.col(j) ) / ( lambda(j) - Adiag(j) );  
+
+            // append to the search space
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
             V.col(V.cols()-1) = w;
 
