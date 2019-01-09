@@ -4,6 +4,7 @@
 #include <Eigen/QR>
 #include <Eigen/Eigenvalues>
 #include <Eigen/IterativeLinearSolvers>
+#include <unsupported/Eigen/IterativeSolvers>
 #include <chrono>
 #include "DavidsonSolver.hpp"
 
@@ -48,8 +49,50 @@ Mat DavidsonSolver::_get_initial_eigenvectors(Vect d, int size_initial_guess)
         guess(idx(j),j) = 1.0;
 
     return guess;
-
 }
+
+
+Mat DavidsonSolver::_jacobi_orthogonal_correction(Mat Aml, Vect u)
+{
+    Mat w;
+
+    // form the projector 
+    Mat P = -u*u.transpose();
+    P.diagonal().array() += 1.0;
+
+    // compute the residue
+    auto r =  Aml * u;
+
+    // project the matrix
+    auto projA =  P * Aml * P.transpose();
+
+    // solve the linear system
+    switch(this->jacobi_linsolve)
+    {        
+        //use cg approximate solver     
+        case 0: 
+        {
+            Eigen::ConjugateGradient<Mat, Eigen::Lower|Eigen::Upper> cg;
+            cg.compute(projA);
+            w = cg.solve(r);
+        }   
+
+        //use GMRES approximate solver
+        case 1:
+        {
+            Eigen::GMRES<Mat, Eigen::IdentityPreconditioner> gmres;
+            gmres.compute(Aml);
+            w = gmres.solve(r);
+        }
+
+        //use llt exact solver
+        case 2: w = projA.llt().solve(r);
+
+    }
+
+    return w;
+}
+
 
 void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
 {
@@ -82,7 +125,8 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
     // initialize the guess eigenvector
     Vect Adiag = A.diagonal();    
     Mat V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
-    Mat I = Mat::Identity(size,size);
+    Mat Aml;
+    //Mat I = Mat::Identity(size,size);
 
     // sort the eigenvalues
     std::sort(Adiag.data(),Adiag.data()+Adiag.size());
@@ -102,10 +146,8 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
     std::chrono::duration<double> elapsed_time;
 
     if (_debug_)
-    {
-        std::cout << "Jacobi correction " << this->jacobi_correction << std::endl;
         std::cout << "iter\tSearch Space\tNorm" << std::endl;
-    }
+    
     for (int iiter = 0; iiter < iter_max; iiter ++ )
     {
         
@@ -134,36 +176,17 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
         // and append to V
         for (int j=0; j<size_initial_guess; j++)
         {   
+            // precompute A-lambda_j I
+            Aml = A;
+            Aml.diagonal().array() -= lambda(j);
+
             // jacobi-davidson correction
             if (this->jacobi_correction)
-            {
-                auto u = q.col(j);
-                auto P = I-u*u.transpose();
-                auto r =  (A-lambda(j)*I) * u;
-                auto projA =  P * (A-lambda(j)*I) * P.transpose();
-
-                // solve the linear system
-                switch(this->jacobi_linsolve)
-                {        
-                    //use cg approximate solver     
-                    case 0: 
-                    {
-                        Eigen::ConjugateGradient<Mat, Eigen::Lower|Eigen::Upper> cg;
-                        cg.compute(projA);
-                        w = cg.solve(r);
-                    }   
-
-                    //use GMRES approximate solver
-                    case 1:
-
-                    //use llt exact solver
-                    case 2: w = projA.llt().solve(r);
-
-                }
-            }
-            // Davidosn diagonally dominant correction
+                w = DavidsonSolver::_jacobi_orthogonal_correction(Aml,q.col(j));
+            
+            // Davidson DPR
             else  
-                w = ( (A-lambda(j)*I) * q.col(j) ) / ( lambda(j) - Adiag(j) );
+                w = ( Aml * q.col(j) ) / ( lambda(j) - Adiag(j) );
 
             // append the correction vector to the search space
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
@@ -235,7 +258,6 @@ void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_gues
     Mat I = Mat::Identity(size,size);
 
     // sort the eigenvalues 
-    std::cout << "sort eigenvalues" << std::endl;
     std::sort(Adiag.data(),Adiag.data()+Adiag.size());
     
     // thin matrix for QR

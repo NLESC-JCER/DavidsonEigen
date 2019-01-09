@@ -32,15 +32,30 @@ Mat init_matrix(int N)
 int main (int argc, char *argv[]){
 
     // parse the input
-    cxxopts::Options options(argv[0],  "Test of the Davidosn routine");
+    cxxopts::Options options(argv[0],  "Eigen Davidson Iterative Solver");
     options.positional_help("[optional args]").show_positional_help();
-    options.add_options()("size", "dimension of the matrix", cxxopts::value<int>(), "100");
-
+    options.add_options()
+        ("size", "dimension of the matrix", cxxopts::value<std::string>()->default_value("100"))
+        ("neigen", "number of eigenvalues required", cxxopts::value<std::string>()->default_value("5"))
+        ("jocc", "use Jacobi-Davidson", cxxopts::value<bool>())
+        ("linsolve", "method to solve the linear system of JOCC (0:CG, 1:GMRES, 2:LLT)", cxxopts::value<std::string>()->default_value("0"))
+        ("help", "Print the help", cxxopts::value<bool>());
     auto result = options.parse(argc,argv);
-    int size = result["size"].as<int>();
 
-    // number of eignvalues required
-    int neigen = 5;
+    if (result.count("help"))
+    {
+        std::cout << options.help({""}) << std::endl;
+        exit(0);
+    }
+
+
+    int size = std::stoi(result["size"].as<std::string>(),nullptr);
+    int neigen = std::stoi(result["neigen"].as<std::string>(),nullptr);
+    bool jocc = result["jocc"].as<bool>();
+    int linsolve = std::stoi(result["linsolve"].as<std::string>(),nullptr);
+    bool help = result["help"].as<bool>();
+
+
 
     // chrono    
     std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -59,6 +74,13 @@ int main (int argc, char *argv[]){
     // start the solver
     start = std::chrono::system_clock::now();
     DavidsonSolver DS;
+
+    if (jocc)
+    {
+        DS.set_jacobi_correction();
+        DS.set_jacobi_linsolve(linsolve);
+    }
+
     DS.solve(A,neigen);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;

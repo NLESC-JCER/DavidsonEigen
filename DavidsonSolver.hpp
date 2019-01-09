@@ -29,6 +29,8 @@ class DavidsonSolver
 		Vect eigenvalues();
 		Mat eigenvectors();
 
+		
+
 		void solve(Mat A, int neigen, int size_initial_guess = 0);
 		void solve(DavidsonOperator A, int neigen, int size_initial_guess = 0);
 
@@ -47,5 +49,6 @@ class DavidsonSolver
 
 		Eigen::ArrayXd _sort_index(Vect V);
 		Mat _get_initial_eigenvectors(Vect D, int size);
+		Mat _jacobi_orthogonal_correction(Mat Aml, Vect u);
 };
 #endif
