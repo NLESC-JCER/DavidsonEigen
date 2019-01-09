@@ -19,45 +19,36 @@ INCS_EIGEN = -I/path/to/eigen/
 
 ## Usage
 ```bash
-./main --help
-Eigen Davidson Iterative Solver
-Usage:
-  ./main [OPTION...]
-      --size arg      dimension of the matrix (default: 100)
-      --neigen arg    number of eigenvalues required (default: 5)
-      --jocc          use Jacobi-Davidson
-      --linsolve arg  method to solve the linear system of JOCC (0:CG,
-                      1:GMRES, 2:LLT) (default: 0)
-      --help          Print the help
-```
+./main --size 1000
+Matrix size : 1000x1000
+Num Threads : 1
 
-Will test the full matrix and matrix-free version of the solver and compare the results against Eigen own methods. More benchmark needed.
-
-## Test
-```bash
-./main 
 ===========================
 = Davidson (DPR)
 ===========================
 
 iter	Search Space	Norm
-   0	          10	7.33e+00/1e-06
-   1	          20	2.52e-04/1e-06
-   2	          30	7.79e-05/1e-06
-   3	          40	2.66e-05/1e-06
-   4	          50	8.22e-06/1e-06
-   5	          60	2.52e-06/1e-06
-   6	          70	6.38e-07/1e-06
+   0	          10	1.55e+00/1e-06
+   1	          20	3.11e-03/1e-06
+   2	          30	1.38e-03/1e-06
+   3	          40	9.50e-04/1e-06
+   4	          50	6.80e-04/1e-06
+   5	          60	4.69e-04/1e-06
+   6	          70	3.36e-04/1e-06
+   7	          80	2.48e-04/1e-06
+   8	          90	1.90e-04/1e-06
+   9	         100	1.54e-04/1e-06
+  10	          10	2.33e-14/1e-06
 
-Davidson               : 0.352354 secs
-Eigen                  : 0.0994993 secs
+Davidson               : 14.6725 secs
+Eigen                  : 54.108 secs
 
       Davidson  	Eigen
-#   0 0.9996460 	0.9996460
-#   1 2.3998684 	2.3998684
-#   2 2.5997432 	2.5997432
-#   3 5.5994871 	5.5994870
-#   4 6.2969455 	6.2969455
+#   0 1.0952436 	1.0951738
+#   1 1.4963254 	1.4962028
+#   2 1.5963869 	1.5962247
+#   3 1.8952878 	1.8949336
+#   4 1.9888033 	1.9884468
 
 ===========================
 = Matrix Free Method
@@ -65,17 +56,19 @@ Eigen                  : 0.0994993 secs
 ===========================
 
 iter	Search Space	Norm
-   0	          10	1.39e+01/1e-06
-   1	          20	6.92e-06/1e-06
-   2	          30	7.69e-07/1e-06
+   0	          10	9.22e-01/1e-06
+   1	          20	4.62e-06/1e-06
+   2	          30	2.49e-06/1e-06
+   3	          40	1.57e-07/1e-06
 
-Davidson               : 0.236414 secs
-Eigen                  : 0.0915296 secs
+Davidson               : 27.6797 secs
+Eigen                  : 53.4498 secs
 
       Davidson  	Eigen
-#   0 1.3112183 	1.3112183
-#   1 1.5246386 	1.5246386
-#   2 5.6588830 	5.6588829
-#   3 8.5667100 	8.5667100
-#   4 11.6295020 	11.6295018
+#   0 0.3994790 	0.3994790
+#   1 0.6749251 	0.6749251
+#   2 1.0814170 	1.0814170
+#   3 1.3745905 	1.3745903
+#   4 1.4875875 	1.4875875
+
 ```
