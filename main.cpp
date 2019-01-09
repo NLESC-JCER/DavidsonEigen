@@ -84,7 +84,7 @@ int main (int argc, char *argv[]){
     DS.solve(A,neigen);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
-    std::cout << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
+    std::cout << std::endl << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
     
     // Eigen solver 
     start = std::chrono::system_clock::now();
@@ -95,9 +95,9 @@ int main (int argc, char *argv[]){
 
     auto dseig = DS.eigenvalues();
     auto eig = es.eigenvalues().head(neigen);
-    std::cout << "Davidson \tEigen" << std::endl;
+    std::cout << std::endl << "      Davidson  \tEigen" << std::endl;
     for(int i=0; i< neigen; i++)
-        printf("%8.7f \t%8.7f\n",dseig(i),eig(i));
+        printf("#% 4d %8.7f \t%8.7f\n",i,dseig(i),eig(i));
         
     //=======================================
     // Matrix Free
@@ -118,7 +118,7 @@ int main (int argc, char *argv[]){
     DSop.solve(Aop,neigen);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
-    std::cout << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
+    std::cout << std::endl << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
     
     // normal eigensolver
     start = std::chrono::system_clock::now();
@@ -129,8 +129,8 @@ int main (int argc, char *argv[]){
 
     auto dseigop = DSop.eigenvalues();
     auto eig2 = es2.eigenvalues().head(neigen);
-    std::cout << "Davidson \tEigen" << std::endl;
+    std::cout << std::endl <<  "      Davidson  \tEigen" << std::endl;
     for(int i=0; i< neigen; i++)
-        printf("%8.7f \t%8.7f\n",dseigop(i),eig2(i));
+        printf("#% 4d %8.7f \t%8.7f\n",i,dseigop(i),eig2(i));
 
 }
