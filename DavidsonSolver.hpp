@@ -1,7 +1,6 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Core>
-#include "DavidsonOperator.hpp"
 
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
 typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
@@ -29,8 +28,8 @@ class DavidsonSolver
 		Vect eigenvalues();
 		Mat eigenvectors();
 
-		void solve(Mat A, int neigen, int size_initial_guess = 0);
-		void solve(DavidsonOperator A, int neigen, int size_initial_guess = 0);
+		template <typename OpMat>
+		void solve(OpMat A, int neigen, int size_initial_guess = 0);
 
 	private :
 
@@ -48,7 +47,11 @@ class DavidsonSolver
 		Eigen::ArrayXd _sort_index(Vect V);
 		Mat _get_initial_eigenvectors(Vect D, int size);
 		Mat _solve_linear_system(Mat A, Vect b); 
-		Mat _jacobi_orthogonal_correction(Mat Aml, Vect u);
-		Mat _jacobi_orthogonal_correction(DavidsonOperator A, Vect u, double lambda);
+
+		template <typename OpMat>
+		Mat _jacobi_orthogonal_correction(OpMat A, Vect u, double lambda);
+
 };
+
+
 #endif

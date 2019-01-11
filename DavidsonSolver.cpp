@@ -7,6 +7,7 @@
 #include <unsupported/Eigen/IterativeSolvers>
 #include <chrono>
 #include "DavidsonSolver.hpp"
+#include "DavidsonOperator.hpp"
 
 
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
@@ -77,23 +78,10 @@ Mat DavidsonSolver::_solve_linear_system(Mat A, Vect r)
     return w;
 }
 
-Mat DavidsonSolver::_jacobi_orthogonal_correction(Mat Aml, Vect u)
-{
 
-    // form the projector 
-    Mat P = -u*u.transpose();
-    P.diagonal().array() += 1.0;
 
-    // compute the residue
-    auto r =  Aml * u;
-
-    // project the matrix
-    auto projA =  P * Aml * P.transpose();
-
-    return DavidsonSolver::_solve_linear_system(projA,r);
-}
-
-Mat DavidsonSolver::_jacobi_orthogonal_correction(DavidsonOperator A, Vect u, double lambda)
+template <class OpMat>
+Mat DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Vect u, double lambda)
 {
     Mat w;
 
@@ -102,19 +90,22 @@ Mat DavidsonSolver::_jacobi_orthogonal_correction(DavidsonOperator A, Vect u, do
     P.diagonal().array() += 1.0;
 
     // compute the residue
-    auto r = A.apply_to_vect(u) - lambda*u;
+    auto r = A*u - lambda*u;
 
     // project the matrix
     // P * (A - lambda*I) * P^T
-    Mat projA = A.apply_to_mat(P.transpose());
+    Mat projA = A*P.transpose();
     projA -= lambda*P.transpose();
     projA = P * projA;
 
     return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
+template Mat DavidsonSolver::_jacobi_orthogonal_correction<Mat>(Mat A, Vect u, double lambda);
+template Mat DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A, Vect u, double lambda);
 
-void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
+template<class OpMat>
+void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 {
 
     if (this->_debug_)
@@ -145,8 +136,6 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
     // initialize the guess eigenvector
     Vect Adiag = A.diagonal();    
     Mat V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
-    Mat Aml;
-    //Mat I = Mat::Identity(size,size);
 
     // sort the eigenvalues
     std::sort(Adiag.data(),Adiag.data()+Adiag.size());
@@ -180,8 +169,9 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
             V = qr.householderQ() * thinQ;
         }
 
-        // project the matrix on the trail subspace
-        Mat T = V.transpose() * A * V;
+        // project the matrix on the trial subspace
+        Mat T = A * V;
+        T = V.transpose()*T;
 
         // diagonalize in the subspace
         // we could replace that with LAPACK ... 
@@ -196,17 +186,14 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
         // and append to V
         for (int j=0; j<size_initial_guess; j++)
         {   
-            // precompute A-lambda_j I
-            Aml = A;
-            Aml.diagonal().array() -= lambda(j);
 
             // jacobi-davidson correction
             if (this->jacobi_correction)
-                w = DavidsonSolver::_jacobi_orthogonal_correction(Aml,q.col(j));
+                w = DavidsonSolver::_jacobi_orthogonal_correction<OpMat>(A,q.col(j),lambda(j));
             
             // Davidson DPR
             else  
-                w = ( Aml * q.col(j) ) / ( lambda(j) - Adiag(j) );
+                w = ( A*q.col(j) - lambda(j)*q.col(j) ) / ( lambda(j) - Adiag(j) );  
 
             // append the correction vector to the search space
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
@@ -242,125 +229,6 @@ void DavidsonSolver::solve(Mat A, int neigen, int size_initial_guess)
    
 }
 
+template void DavidsonSolver::solve<Mat>(Mat A, int neigen, int size_initial_guess=0);
+template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator A, int neigen, int size_initial_guess=0);
 
-void DavidsonSolver::solve(DavidsonOperator A, int neigen, int size_initial_guess)
-{
-
-    if (this->_debug_)
-    {
-        std::cout << std::endl;
-        std::cout << "===========================" << std::endl; 
-        std::cout << "= Matrix Free Method" << std::endl;
-        if(this->jacobi_correction)
-        {
-            std::cout << "= Jacobi-Davidson      " <<  std::endl; 
-            std::cout << "    linsolve : " << this->jacobi_linsolve << std::endl;
-        }
-        else
-            std::cout << "= Davidson (DPR)" <<  std::endl; 
-        std::cout << "===========================" << std::endl;
-        std::cout << std::endl;
-    }
-
-    double norm;
-    int size = A.OpSize();
-
-    // if argument not provided we default to 0
-    // and set to twice the number of eigenvalues
-    if (size_initial_guess == 0)
-        size_initial_guess = 2*neigen;
-
-    int search_space = size_initial_guess;
-
-    // initialize the guess eigenvector
-    Vect Adiag = A.diagonal();    
-    Mat V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
-    Mat I = Mat::Identity(size,size);
-
-    // sort the eigenvalues 
-    std::sort(Adiag.data(),Adiag.data()+Adiag.size());
-    
-    // thin matrix for QR
-    Mat thinQ;
-
-    // eigenvalues hodlers
-    Vect lambda;
-    Vect lambda_old = Vect::Ones(neigen,1);
-
-    // temp varialbes 
-    Mat U, w, q;
-
-    if (_debug_)
-        std::cout << "iter\tSearch Space\tNorm" << std::endl;
-
-    for (int iiter = 0; iiter < iter_max; iiter ++ )
-    {
-        
-        // orthogonalise the vectors
-        // use the HouseholderQR algorithm of Eigen
-        if (iiter>0)
-        {
-            thinQ = Mat::Identity(V.rows(),V.cols());
-            Eigen::HouseholderQR<Mat> qr(V);
-            V = qr.householderQ() * thinQ;
-        }
-
-        // project the matrix on the trail subspace
-        Mat T = V.transpose() * A.apply_to_mat(V);
-
-        // diagonalize in the subspace
-        // we could replace that with LAPACK ... 
-        Eigen::SelfAdjointEigenSolver<Mat> es(T);
-        lambda = es.eigenvalues();
-        U = es.eigenvectors();
-        
-        // Ritz eigenvectors
-        q = V.block(0,0,V.rows(),search_space)*U;
-
-        // compute correction vectors
-        // and append to V
-        for (int j=0; j<size_initial_guess; j++)
-        {   
-
-            // jacobi orthogonal correction
-            if(this->jacobi_correction)
-                w = DavidsonSolver::_jacobi_orthogonal_correction(A, q.col(j), lambda(j) );
-
-            // DPR correction
-            else
-                w = ( A.apply_to_vect(q.col(j)) - lambda(j)*q.col(j) ) / ( lambda(j) - Adiag(j) );  
-
-            // append to the search space
-            V.conservativeResize(Eigen::NoChange,V.cols()+1);
-            V.col(V.cols()-1) = w;
-
-        }
-
-        // check for convergence
-        norm = (lambda.head(neigen) - lambda_old).norm();
-
-        if(_debug_)
-            printf("%4d\t%12d\t%4.2e/%.0e\n", iiter,search_space,norm,tol);
-        
-        // break if converged update otherwise
-        if (norm < tol)
-            break;
-        else
-        {
-            lambda_old = lambda.head(neigen);
-            search_space += size_initial_guess;
-        }
-
-        // restart
-        if (search_space > max_search_space)
-        {
-            V = q.block(0,0,V.rows(),size_initial_guess);
-            search_space = size_initial_guess;
-        }
-    }
-
-    // store the eigenvalues/eigenvectors
-    this->_eigenvalues = lambda.head(neigen);
-    this->_eigenvectors = U.block(0,0,U.rows(),neigen);
-   
-}
