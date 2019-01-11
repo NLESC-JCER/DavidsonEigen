@@ -33,6 +33,22 @@ RowVect DavidsonOperator::row(int index)
     return row_out;
 }
 
+// private : get a col of the operator
+Vect DavidsonOperator::col(int index) const
+{
+    Vect col_out = Vect::Zero(OpSizeVal,1);    
+    for (int j=0; j < OpSizeVal; j++)
+    {
+        if (j==index)
+        {
+            col_out(j,0) = diag_el(j); 
+        }
+        else
+            col_out(j,0) = 0.01 / std::pow( static_cast<double>(j-index),2) ;
+    }
+    return col_out;
+}
+
 Vect DavidsonOperator::diagonal()
 {
     Vect D = Vect::Zero(OpSizeVal,1);
@@ -54,38 +70,6 @@ Mat DavidsonOperator::get_full_mat()
     return matrix; 
 }
 
-// apply the operator to a vector
-Vect DavidsonOperator::apply_to_vect(Vect b)
-{
-
-	Vect Vj;
-    //int n = b.rows(); TO DO Check size consistency
-    Vect col_out = Vect::Zero(OpSizeVal,1);
-
-    for(int j=0; j < OpSizeVal; j++)
-    {
-        Vj = this->row(j);
-        col_out(j,0) = Vj.dot(b);
-    }
-    return col_out;
-}
-
-// apply to a matrix
-Mat DavidsonOperator::apply_to_mat(Mat M)
-{
-    Vect Arow;
-    Vect Mcol;
-
-    int ncols = M.cols();
-    Mat mat_out = Mat::Zero(OpSizeVal,ncols);
-
-    for(int jcol=0; jcol < ncols; jcol++)
-    {
-        Mcol = M.col(jcol);
-        mat_out.col(jcol) = apply_to_vect(Mcol);
-    }
-    return mat_out;
-}
 
 // get the size
 int DavidsonOperator::OpSize()
