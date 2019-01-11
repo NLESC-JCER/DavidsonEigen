@@ -3,10 +3,6 @@
 #include <Eigen/Core>
 #include "DavidsonOperator.hpp"
 
-// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-// typedef Eigen::Matrix<double,1,Eigen::Dynamic> RowVect;
-
 // constructors
 DavidsonOperator::DavidsonOperator(int size)
 {

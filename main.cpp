@@ -8,10 +8,6 @@
 #include "DavidsonSolver.hpp"
 #include "DavidsonOperator.hpp"
 
-// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-// typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
-
 Eigen::MatrixXd init_matrix(int N)
 {
     Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(N,N);

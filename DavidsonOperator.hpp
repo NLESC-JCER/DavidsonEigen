@@ -2,15 +2,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
-// https://eigen.tuxfamily.org/dox/group__MatrixfreeSolverExample.html
-
-// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-// typedef Eigen::Matrix<double,1,Eigen::Dynamic> RowVect;
-
 #ifndef _DAVIDSON_OP_
 #define _DAVIDSON_OP_
-
 
 class DavidsonOperator;
 

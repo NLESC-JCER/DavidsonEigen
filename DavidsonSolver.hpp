@@ -2,10 +2,6 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
-// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-// typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
-
 #ifndef _DAVIDSON_SOLVER_
 #define _DAVIDSON_SOLVER_
 

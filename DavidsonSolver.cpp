@@ -10,10 +10,6 @@
 #include "DavidsonOperator.hpp"
 
 
-// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-// typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
-
 DavidsonSolver::DavidsonSolver() : iter_max(1000), tol(1E-6), max_search_space(100) { }
 DavidsonSolver::DavidsonSolver(int iter_max) : iter_max(iter_max) , tol(1E-6), max_search_space(100) { }
 DavidsonSolver::DavidsonSolver(int iter_max, double tol) : iter_max(iter_max), tol(tol), max_search_space(100) { }
