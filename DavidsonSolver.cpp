@@ -10,9 +10,9 @@
 #include "DavidsonOperator.hpp"
 
 
-typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
+// typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
 
 DavidsonSolver::DavidsonSolver() : iter_max(1000), tol(1E-6), max_search_space(100) { }
 DavidsonSolver::DavidsonSolver(int iter_max) : iter_max(iter_max) , tol(1E-6), max_search_space(100) { }
@@ -25,11 +25,11 @@ void DavidsonSolver::set_max_search_space(int N) { this->max_search_space = N;}
 void DavidsonSolver::set_jacobi_correction() { this->jacobi_correction = true; }
 void DavidsonSolver::set_jacobi_linsolve(int method) {this->jacobi_linsolve = method;}
 
-Vect DavidsonSolver::eigenvalues() {return this->_eigenvalues;}
-Mat DavidsonSolver::eigenvectors() {return this->_eigenvectors;}
+Eigen::VectorXd DavidsonSolver::eigenvalues() {return this->_eigenvalues;}
+Eigen::MatrixXd DavidsonSolver::eigenvectors() {return this->_eigenvectors;}
 
 
-Eigen::ArrayXd DavidsonSolver::_sort_index(Vect V)
+Eigen::ArrayXd DavidsonSolver::_sort_index(Eigen::VectorXd V)
 {
     Eigen::ArrayXd idx = Eigen::ArrayXd::LinSpaced(V.rows(),0,V.rows()-1);
     std::sort(idx.data(),idx.data()+idx.size(),
@@ -37,10 +37,10 @@ Eigen::ArrayXd DavidsonSolver::_sort_index(Vect V)
     return idx; 
 }
 
-Mat DavidsonSolver::_get_initial_eigenvectors(Vect d, int size_initial_guess)
+Eigen::MatrixXd DavidsonSolver::_get_initial_eigenvectors(Eigen::VectorXd d, int size_initial_guess)
 {
 
-    Mat guess = Mat::Zero(d.size(),size_initial_guess);
+    Eigen::MatrixXd guess = Eigen::MatrixXd::Zero(d.size(),size_initial_guess);
     Eigen::ArrayXd idx = DavidsonSolver::_sort_index(d);
 
     for (int j=0; j<size_initial_guess;j++)
@@ -49,16 +49,16 @@ Mat DavidsonSolver::_get_initial_eigenvectors(Vect d, int size_initial_guess)
     return guess;
 }
 
-Mat DavidsonSolver::_solve_linear_system(Mat A, Vect r)
+Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd A, Eigen::VectorXd r)
 {
-    Mat w;
+    Eigen::MatrixXd w;
 
     switch(this->jacobi_linsolve)
     {        
         //use cg approximate solver     
         case 0: 
         {
-            Eigen::ConjugateGradient<Mat, Eigen::Lower|Eigen::Upper> cg;
+            Eigen::ConjugateGradient<Eigen::MatrixXd, Eigen::Lower|Eigen::Upper> cg;
             cg.compute(A);
             w = cg.solve(r);
         }   
@@ -66,7 +66,7 @@ Mat DavidsonSolver::_solve_linear_system(Mat A, Vect r)
         //use GMRES approximate solver
         case 1:
         {
-            Eigen::GMRES<Mat, Eigen::IdentityPreconditioner> gmres;
+            Eigen::GMRES<Eigen::MatrixXd, Eigen::IdentityPreconditioner> gmres;
             gmres.compute(A);
             w = gmres.solve(r);
         }
@@ -81,28 +81,28 @@ Mat DavidsonSolver::_solve_linear_system(Mat A, Vect r)
 
 
 template <class OpMat>
-Mat DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Vect u, double lambda)
+Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd u, double lambda)
 {
-    Mat w;
+    Eigen::MatrixXd w;
 
     // form the projector 
-    Mat P = -u*u.transpose();
+    Eigen::MatrixXd P = -u*u.transpose();
     P.diagonal().array() += 1.0;
 
     // compute the residue
-    auto r = A*u - lambda*u;
+    Eigen::VectorXd r = A*u - lambda*u;
 
     // project the matrix
     // P * (A - lambda*I) * P^T
-    Mat projA = A*P.transpose();
+    Eigen::MatrixXd projA = A*P.transpose();
     projA -= lambda*P.transpose();
     projA = P * projA;
 
     return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
-template Mat DavidsonSolver::_jacobi_orthogonal_correction<Mat>(Mat A, Vect u, double lambda);
-template Mat DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A, Vect u, double lambda);
+template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::MatrixXd>(Eigen::MatrixXd  A, Eigen::VectorXd u, double lambda);
+template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A, Eigen::VectorXd u, double lambda);
 
 template<class OpMat>
 void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
@@ -134,21 +134,21 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
     int search_space = size_initial_guess;
 
     // initialize the guess eigenvector
-    Vect Adiag = A.diagonal();    
-    Mat V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
+    Eigen::VectorXd Adiag = A.diagonal();    
+    Eigen::MatrixXd V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
 
     // sort the eigenvalues
     std::sort(Adiag.data(),Adiag.data()+Adiag.size());
 
     // thin matrix for QR
-    Mat thinQ;
+    Eigen::MatrixXd thinQ;
 
     // eigenvalues hodlers
-    Vect lambda;
-    Vect lambda_old = Vect::Ones(neigen,1);
+    Eigen::VectorXd lambda;
+    Eigen::VectorXd lambda_old = Eigen::VectorXd::Ones(neigen,1);
 
     // temp varialbes 
-    Mat U, w, q;
+    Eigen::MatrixXd T, U, w, q;
 
     // chrono !
     std::chrono::time_point<std::chrono::system_clock> start, end, instart, instop;
@@ -164,18 +164,18 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
         // use the HouseholderQR algorithm of Eigen
         if (iiter>0)
         {
-            thinQ = Mat::Identity(V.rows(),V.cols());
-            Eigen::HouseholderQR<Mat> qr(V);
+            thinQ = Eigen::MatrixXd::Identity(V.rows(),V.cols());
+            Eigen::HouseholderQR<Eigen::MatrixXd> qr(V);
             V = qr.householderQ() * thinQ;
         }
 
         // project the matrix on the trial subspace
-        Mat T = A * V;
+        T = A * V;
         T = V.transpose()*T;
 
         // diagonalize in the subspace
         // we could replace that with LAPACK ... 
-        Eigen::SelfAdjointEigenSolver<Mat> es(T);
+        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(T);
         lambda = es.eigenvalues();
         U = es.eigenvectors();
         
@@ -229,6 +229,6 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
    
 }
 
-template void DavidsonSolver::solve<Mat>(Mat A, int neigen, int size_initial_guess=0);
+template void DavidsonSolver::solve<Eigen::MatrixXd>(Eigen::MatrixXd A, int neigen, int size_initial_guess=0);
 template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator A, int neigen, int size_initial_guess=0);
 

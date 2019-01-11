@@ -2,9 +2,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
-typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
+// typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
 
 #ifndef _DAVIDSON_SOLVER_
 #define _DAVIDSON_SOLVER_
@@ -25,8 +25,8 @@ class DavidsonSolver
 		void set_jacobi_correction();
 		void set_jacobi_linsolve(int method);
 
-		Vect eigenvalues();
-		Mat eigenvectors();
+		Eigen::VectorXd eigenvalues();
+		Eigen::MatrixXd eigenvectors();
 
 		template <typename OpMat>
 		void solve(OpMat A, int neigen, int size_initial_guess = 0);
@@ -41,15 +41,15 @@ class DavidsonSolver
 		bool jacobi_correction=false;
 		int jacobi_linsolve = 0;
 
-		Vect _eigenvalues;
-		Mat _eigenvectors; 
+		Eigen::VectorXd _eigenvalues;
+		Eigen::MatrixXd _eigenvectors; 
 
-		Eigen::ArrayXd _sort_index(Vect V);
-		Mat _get_initial_eigenvectors(Vect D, int size);
-		Mat _solve_linear_system(Mat A, Vect b); 
+		Eigen::ArrayXd _sort_index(Eigen::VectorXd V);
+		Eigen::MatrixXd _get_initial_eigenvectors(Eigen::VectorXd D, int size);
+		Eigen::MatrixXd _solve_linear_system(Eigen::MatrixXd, Eigen::VectorXd b); 
 
 		template <typename OpMat>
-		Mat _jacobi_orthogonal_correction(OpMat A, Vect u, double lambda);
+		Eigen::MatrixXd _jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd u, double lambda);
 
 };
 

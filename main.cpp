@@ -8,16 +8,16 @@
 #include "DavidsonSolver.hpp"
 #include "DavidsonOperator.hpp"
 
-typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
+// typedef Eigen::Matrix<double,1,Eigen::Dynamic> Vect_row;
 
-Mat init_matrix(int N)
+Eigen::MatrixXd init_matrix(int N)
 {
-    Mat matrix = Mat::Zero(N,N);
+    Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(N,N);
     double eps = 0.01;
-    matrix = matrix + eps*Mat::Random(N,N);
-    Mat tmat = matrix.transpose();
+    matrix = matrix + eps*Eigen::MatrixXd::Random(N,N);
+    Eigen::MatrixXd tmat = matrix.transpose();
     matrix = matrix + tmat; 
 
     for (int i = 0; i<N; i++)
@@ -69,7 +69,7 @@ int main (int argc, char *argv[]){
     //=======================================
 
     // init the matrix
-    Mat A = init_matrix(size);
+    Eigen::MatrixXd A = init_matrix(size);
 
     // start the solver
     start = std::chrono::system_clock::now();
@@ -88,7 +88,7 @@ int main (int argc, char *argv[]){
     
     // Eigen solver 
     start = std::chrono::system_clock::now();
-    Eigen::SelfAdjointEigenSolver<Mat> es(A);
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(A);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
     std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;
@@ -105,7 +105,7 @@ int main (int argc, char *argv[]){
 
     // Create Operator
     DavidsonOperator Aop(size);
-    Mat Afull = Aop.get_full_mat();
+    Eigen::MatrixXd Afull = Aop.get_full_mat();
 
     // Davidosn Solver
     start = std::chrono::system_clock::now();
@@ -122,7 +122,7 @@ int main (int argc, char *argv[]){
     
     // normal eigensolver
     start = std::chrono::system_clock::now();
-    Eigen::SelfAdjointEigenSolver<Mat> es2(Afull);
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es2(Afull);
     end = std::chrono::system_clock::now();
     elapsed_time = end-start;
     std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;

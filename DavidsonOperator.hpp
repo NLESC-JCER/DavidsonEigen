@@ -4,9 +4,9 @@
 
 // https://eigen.tuxfamily.org/dox/group__MatrixfreeSolverExample.html
 
-typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
-typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
-typedef Eigen::Matrix<double,1,Eigen::Dynamic> RowVect;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,1> Vect;
+// typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Mat;
+// typedef Eigen::Matrix<double,1,Eigen::Dynamic> RowVect;
 
 #ifndef _DAVIDSON_OP_
 #define _DAVIDSON_OP_
@@ -48,10 +48,10 @@ class DavidsonOperator : public Eigen::EigenBase<Eigen::MatrixXd>
 
 		//Vect apply_to_vect(Vect b);
 		//Mat apply_to_mat(Mat m);
-		Mat get_full_mat();
-		Vect diagonal();
-		RowVect row(int index);
-		Vect col(int index) const;
+		Eigen::MatrixXd get_full_mat();
+		Eigen::VectorXd diagonal();
+		Eigen::RowVectorXd row(int index);
+		Eigen::VectorXd col(int index) const;
 
 		int OpSize();
 
@@ -59,7 +59,7 @@ class DavidsonOperator : public Eigen::EigenBase<Eigen::MatrixXd>
 
 		int OpSizeVal;
 		double OpEpsVal;
-		Vect diag_el;		
+		Eigen::VectorXd diag_el;		
 };
 
 namespace Eigen{
