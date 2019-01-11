@@ -8,7 +8,7 @@
 #include <chrono>
 #include "DavidsonSolver.hpp"
 #include "DavidsonOperator.hpp"
-
+#include "MatrixFreeOperator.hpp"
 
 DavidsonSolver::DavidsonSolver() : iter_max(1000), tol(1E-6), max_search_space(100) { }
 DavidsonSolver::DavidsonSolver(int iter_max) : iter_max(iter_max) , tol(1E-6), max_search_space(100) { }

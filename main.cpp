@@ -7,6 +7,7 @@
 #include <cxxopts.hpp>
 #include "DavidsonSolver.hpp"
 #include "DavidsonOperator.hpp"
+#include "MatrixFreeOperator.hpp"
 
 Eigen::MatrixXd init_matrix(int N)
 {
