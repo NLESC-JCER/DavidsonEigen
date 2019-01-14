@@ -2,6 +2,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "DavidsonOperator.hpp"
+#include "MatrixFreeOperator.hpp"
+
 
 // constructors
 DavidsonOperator::DavidsonOperator(int size)
@@ -12,9 +14,8 @@ DavidsonOperator::DavidsonOperator(int size)
     diag_el *= 1E2;
 } 
 
-
-// private : get a row of the operator
-Eigen::RowVectorXd DavidsonOperator::row(int index)
+// get a row of the operator
+Eigen::RowVectorXd DavidsonOperator::row(int index) const
 {
 	Eigen::RowVectorXd row_out = Eigen::RowVectorXd::Zero(1,OpSizeVal);    
     for (int j=0; j< OpSizeVal; j++)
@@ -29,7 +30,7 @@ Eigen::RowVectorXd DavidsonOperator::row(int index)
     return row_out;
 }
 
-// private : get a col of the operator
+//  get a col of the operator
 Eigen::VectorXd DavidsonOperator::col(int index) const
 {
     Eigen::VectorXd col_out = Eigen::VectorXd::Zero(OpSizeVal,1);    
@@ -43,34 +44,6 @@ Eigen::VectorXd DavidsonOperator::col(int index) const
             col_out(j,0) = 0.01 / std::pow( static_cast<double>(j-index),2) ;
     }
     return col_out;
-}
-
-Eigen::VectorXd DavidsonOperator::diagonal()
-{
-    Eigen::VectorXd D = Eigen::VectorXd::Zero(OpSizeVal,1);
-    Eigen::RowVectorXd row_data;
-    for(int i=0; i<OpSizeVal;i++)
-    {
-        row_data = this->row(i);
-        D(i,0) = row_data(0,i);
-    }
-    return D;
-}
-
-// get the full matrix if we have to
-Eigen::MatrixXd DavidsonOperator::get_full_mat()
-{
-	Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(OpSizeVal,OpSizeVal);
-    for(int i=0; i<OpSizeVal; i++)
-        matrix.row(i) = this->row(i);
-    return matrix; 
-}
-
-
-// get the size
-int DavidsonOperator::OpSize()
-{
-	return OpSizeVal;
 }
 
 
