@@ -77,7 +77,7 @@ Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd A, Eigen::V
 
 
 template <class OpMat>
-Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd u, double lambda)
+Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd r, Eigen::VectorXd u, double lambda)
 {
     Eigen::MatrixXd w;
 
@@ -86,7 +86,7 @@ Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::Ve
     P.diagonal().array() += 1.0;
 
     // compute the residue
-    Eigen::VectorXd r = A*u - lambda*u;
+    //Eigen::VectorXd r = A*u - lambda*u;
 
     // project the matrix
     // P * (A - lambda*I) * P^T
@@ -97,8 +97,8 @@ Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::Ve
     return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
-template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::MatrixXd>(Eigen::MatrixXd  A, Eigen::VectorXd u, double lambda);
-template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A, Eigen::VectorXd u, double lambda);
+template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::MatrixXd>(Eigen::MatrixXd  A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
+template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
 
 template<class OpMat>
 void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
@@ -180,24 +180,31 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 
         // compute correction vectors
         // and append to V
+        norm = 0.0;
         for (int j=0; j<size_initial_guess; j++)
         {   
 
+            // residue vector
+            w = A*q.col(j) - lambda(j)*q.col(j);
+            norm += w.norm();
+
             // jacobi-davidson correction
             if (this->jacobi_correction)
-                w = DavidsonSolver::_jacobi_orthogonal_correction<OpMat>(A,q.col(j),lambda(j));
+                w = DavidsonSolver::_jacobi_orthogonal_correction<OpMat>(A,w,q.col(j),lambda(j));
             
             // Davidson DPR
             else  
-                w = ( A*q.col(j) - lambda(j)*q.col(j) ) / ( lambda(j) - Adiag(j) );  
+                w = w / ( lambda(j) - Adiag(j) );  
 
             // append the correction vector to the search space
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
             V.col(V.cols()-1) = w;
+
         }
 
         // check for convergence
-        norm = (lambda.head(neigen) - lambda_old).norm();
+        //norm = (lambda.head(neigen) - lambda_old).norm();
+        norm /= size_initial_guess;
 
         if(_debug_)
             printf("%4d\t%12d\t%4.2e/%.0e\n", iiter,search_space,norm,tol);
