@@ -130,7 +130,7 @@ void DavidsonSolver::solve(OpMat A, OpMat S, int neigen, int size_initial_guess)
     int search_space = size_initial_guess;
 
     // initialize the guess eigenvector
-    Eigen::VectorXd Adiag = A.diagonal();    
+    Eigen::VectorXd Adiag = A.diagonal();  
     Eigen::MatrixXd V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
 
     // sort the eigenvalues
@@ -189,7 +189,8 @@ void DavidsonSolver::solve(OpMat A, OpMat S, int neigen, int size_initial_guess)
         {   
 
             // residue vector
-            w = A*q.col(j) - lambda(j)*q.col(j);
+            w = (A-lambda(j)*S) * q.col(j);
+            //w = A*q.col(j) - lambda(j)*q.col(j);
             norm += w.norm();
 
             // jacobi-davidson correction
