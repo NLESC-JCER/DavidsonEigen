@@ -101,7 +101,7 @@ template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::Ma
 template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
 
 template<class OpMat>
-void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
+void DavidsonSolver::solve(OpMat A, OpMat S, int neigen, int size_initial_guess)
 {
 
     if (this->_debug_)
@@ -141,10 +141,9 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 
     // eigenvalues hodlers
     Eigen::VectorXd lambda;
-    Eigen::VectorXd lambda_old = Eigen::VectorXd::Ones(neigen,1);
 
     // temp varialbes 
-    Eigen::MatrixXd T, U, w, q;
+    Eigen::MatrixXd T, SP, U, w, q;
 
     // chrono !
     std::chrono::time_point<std::chrono::system_clock> start, end, instart, instop;
@@ -169,9 +168,14 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
         T = A * V;
         T = V.transpose()*T;
 
+        // project the overlap
+        SP = S * V;
+        SP = V.transpose()*SP;
+
         // diagonalize in the subspace
         // we could replace that with LAPACK ... 
-        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(T);
+        Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> es(T,SP);
+        //Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(T);
         lambda = es.eigenvalues();
         U = es.eigenvectors();
         
@@ -213,10 +217,7 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
         if (norm < tol)
             break;
         else
-        {
-            lambda_old = lambda.head(neigen);
             search_space += size_initial_guess;
-        }
 
         // restart
         if (search_space > max_search_space)
@@ -228,10 +229,10 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 
     // store the eigenvalues/eigenvectors
     this->_eigenvalues = lambda.head(neigen);
-    this->_eigenvectors = U.block(0,0,U.rows(),neigen);
+    this->_eigenvectors = U.block(0,0,U.rows(),neigen); // not V ??!!
    
 }
 
-template void DavidsonSolver::solve<Eigen::MatrixXd>(Eigen::MatrixXd A, int neigen, int size_initial_guess=0);
-template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator A, int neigen, int size_initial_guess=0);
+template void DavidsonSolver::solve<Eigen::MatrixXd>(Eigen::MatrixXd A, Eigen::MatrixXd S, int neigen, int size_initial_guess=0);
+//template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator A, int neigen, int size_initial_guess=0);
 
