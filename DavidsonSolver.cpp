@@ -77,7 +77,7 @@ Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd A, Eigen::V
 
 
 template <class OpMat>
-Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd r, Eigen::VectorXd u, double lambda)
+Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, OpMat B, Eigen::VectorXd r, Eigen::VectorXd u, double lambda)
 {
     Eigen::MatrixXd w;
 
@@ -89,19 +89,19 @@ Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::Ve
     //Eigen::VectorXd r = A*u - lambda*u;
 
     // project the matrix
-    // P * (A - lambda*I) * P^T
+    // P * (A - lambda*B) * P^T
     Eigen::MatrixXd projA = A*P.transpose();
-    projA -= lambda*P.transpose();
+    projA -= lambda*B*P.transpose();
     projA = P * projA;
 
     return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
-template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::MatrixXd>(Eigen::MatrixXd  A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
-template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
+template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::MatrixXd>(Eigen::MatrixXd  A, Eigen::MatrixXd  B, Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
+//template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
 
 template<class OpMat>
-void DavidsonSolver::solve(OpMat A, OpMat S, int neigen, int size_initial_guess)
+void DavidsonSolver::solve(OpMat A, OpMat B, int neigen, int size_initial_guess)
 {
 
     if (this->_debug_)
@@ -143,7 +143,7 @@ void DavidsonSolver::solve(OpMat A, OpMat S, int neigen, int size_initial_guess)
     Eigen::VectorXd lambda;
 
     // temp varialbes 
-    Eigen::MatrixXd T, SP, U, w, q;
+    Eigen::MatrixXd T, Bp, U, w, q;
 
     // chrono !
     std::chrono::time_point<std::chrono::system_clock> start, end, instart, instop;
@@ -169,12 +169,12 @@ void DavidsonSolver::solve(OpMat A, OpMat S, int neigen, int size_initial_guess)
         T = V.transpose()*T;
 
         // project the overlap
-        SP = S * V;
-        SP = V.transpose()*SP;
+        Bp = B * V;
+        Bp = V.transpose()*Bp;
 
         // diagonalize in the subspace
         // we could replace that with LAPACK ... 
-        Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> es(T,SP);
+        Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> es(T,Bp);
         //Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(T);
         lambda = es.eigenvalues();
         U = es.eigenvectors();
@@ -189,13 +189,13 @@ void DavidsonSolver::solve(OpMat A, OpMat S, int neigen, int size_initial_guess)
         {   
 
             // residue vector
-            w = (A-lambda(j)*S) * q.col(j);
+            w = (A-lambda(j)*B) * q.col(j);
             //w = A*q.col(j) - lambda(j)*q.col(j);
             norm += w.norm();
 
             // jacobi-davidson correction
             if (this->jacobi_correction)
-                w = DavidsonSolver::_jacobi_orthogonal_correction<OpMat>(A,w,q.col(j),lambda(j));
+                w = DavidsonSolver::_jacobi_orthogonal_correction<OpMat>(A,B,w,q.col(j),lambda(j));
             
             // Davidson DPR
             else  

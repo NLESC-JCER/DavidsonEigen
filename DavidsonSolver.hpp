@@ -45,7 +45,7 @@ class DavidsonSolver
 		Eigen::MatrixXd _solve_linear_system(Eigen::MatrixXd, Eigen::VectorXd b); 
 
 		template <typename OpMat>
-		Eigen::MatrixXd _jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
+		Eigen::MatrixXd _jacobi_orthogonal_correction(OpMat A, OpMat B, Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
 
 };
 
