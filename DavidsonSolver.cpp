@@ -74,8 +74,6 @@ Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd A, Eigen::V
     return w;
 }
 
-
-
 template <class OpMat>
 Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd r, Eigen::VectorXd u, double lambda)
 {
@@ -228,7 +226,7 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 
     // store the eigenvalues/eigenvectors
     this->_eigenvalues = lambda.head(neigen);
-    this->_eigenvectors = U.block(0,0,U.rows(),neigen);
+    this->_eigenvectors = q.block(0,0,q.rows(),neigen);
    
 }
 

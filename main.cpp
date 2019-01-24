@@ -95,7 +95,8 @@ int main (int argc, char *argv[]){
     std::cout << std::endl << "      Davidson  \tEigen" << std::endl;
     for(int i=0; i< neigen; i++)
         printf("#% 4d %8.7f \t%8.7f\n",i,dseig(i),eig(i));
-        
+
+
     //=======================================
     // Matrix Free
     //=======================================
