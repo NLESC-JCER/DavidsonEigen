@@ -99,7 +99,7 @@ template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::Ma
 template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
 
 template<class OpMat>
-void DavidsonSolver::solve(OpMat &A, int neigen, int size_initial_guess)
+void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 {
 
     if (this->_debug_)
@@ -179,13 +179,13 @@ void DavidsonSolver::solve(OpMat &A, int neigen, int size_initial_guess)
 
         // compute correction vectors
         // and append to V
-        //norm = 0.0;
+        norm = 0.0;
         for (int j=0; j<size_initial_guess; j++)
         {   
 
             // residue vector
             w = A*q.col(j) - lambda(j)*q.col(j);
-            //norm += w.norm();
+            norm += w.norm();
 
             // jacobi-davidson correction
             if (this->jacobi_correction)
@@ -202,8 +202,8 @@ void DavidsonSolver::solve(OpMat &A, int neigen, int size_initial_guess)
         }
 
         // check for convergence
-        norm = (lambda.head(neigen) - lambda_old).norm();
-        //norm /= size_initial_guess;
+        //norm = (lambda.head(neigen) - lambda_old).norm();
+        norm /= search_space;
 
         if(_debug_)
             printf("%4d\t%12d\t%4.2e/%.0e\n", iiter,search_space,norm,tol);
@@ -232,6 +232,6 @@ void DavidsonSolver::solve(OpMat &A, int neigen, int size_initial_guess)
    
 }
 
-template void DavidsonSolver::solve<Eigen::MatrixXd>(Eigen::MatrixXd &A, int neigen, int size_initial_guess=0);
-template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator &A, int neigen, int size_initial_guess=0);
+template void DavidsonSolver::solve<Eigen::MatrixXd>(Eigen::MatrixXd A, int neigen, int size_initial_guess=0);
+template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator A, int neigen, int size_initial_guess=0);
 

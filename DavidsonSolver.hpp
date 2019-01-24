@@ -25,7 +25,7 @@ class DavidsonSolver
 		Eigen::MatrixXd eigenvectors();
 
 		template <typename OpMat>
-		void solve(OpMat &A, int neigen, int size_initial_guess = 0);
+		void solve(OpMat A, int neigen, int size_initial_guess = 0);
 
 	private :
 
