@@ -25,7 +25,7 @@ class DavidsonSolver
 		Eigen::MatrixXd eigenvectors();
 
 		template <typename OpMat>
-		void solve(OpMat A, int neigen, int size_initial_guess = 0);
+		void solve(OpMat &A, int neigen, int size_initial_guess = 0);
 
 	private :
 
@@ -40,9 +40,9 @@ class DavidsonSolver
 		Eigen::VectorXd _eigenvalues;
 		Eigen::MatrixXd _eigenvectors; 
 
-		Eigen::ArrayXd _sort_index(Eigen::VectorXd V);
-		Eigen::MatrixXd _get_initial_eigenvectors(Eigen::VectorXd D, int size);
-		Eigen::MatrixXd _solve_linear_system(Eigen::MatrixXd, Eigen::VectorXd b); 
+		Eigen::ArrayXd _sort_index(Eigen::VectorXd &V);
+		Eigen::MatrixXd _get_initial_eigenvectors(Eigen::VectorXd &D, int size);
+		Eigen::MatrixXd _solve_linear_system(Eigen::MatrixXd &A, Eigen::VectorXd &b); 
 
 		template <typename OpMat>
 		Eigen::MatrixXd _jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
