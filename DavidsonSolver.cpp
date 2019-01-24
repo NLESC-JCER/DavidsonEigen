@@ -75,7 +75,7 @@ Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd &A, Eigen::
 }
 
 template <class OpMat>
-Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::VectorXd r, Eigen::VectorXd u, double lambda)
+Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat &A, Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda)
 {
     Eigen::MatrixXd w;
 
@@ -95,11 +95,11 @@ Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(OpMat A, Eigen::Ve
     return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
-template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::MatrixXd>(Eigen::MatrixXd  A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
-template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator A,  Eigen::VectorXd r, Eigen::VectorXd u, double lambda);
+template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<Eigen::MatrixXd>(Eigen::MatrixXd  &A,  Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda);
+template Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction<DavidsonOperator>(DavidsonOperator &A,  Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda);
 
 template<class OpMat>
-void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
+void DavidsonSolver::solve(OpMat &A, int neigen, int size_initial_guess)
 {
 
     if (this->_debug_)
@@ -143,7 +143,7 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 
     // temp varialbes 
     Eigen::MatrixXd T, U, q;
-    Eigen::VectorXd w;
+    Eigen::VectorXd w,tmp;
 
     // chrono !
     std::chrono::time_point<std::chrono::system_clock> start, end, instart, instop;
@@ -189,7 +189,10 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
 
             // jacobi-davidson correction
             if (this->jacobi_correction)
-                w = DavidsonSolver::_jacobi_orthogonal_correction<OpMat>(A,w,q.col(j),lambda(j));
+            {
+                tmp = q.col(j);
+                w = DavidsonSolver::_jacobi_orthogonal_correction<OpMat>(A,w,tmp,lambda(j));
+            }
             
             // Davidson DPR
             else  
@@ -232,6 +235,6 @@ void DavidsonSolver::solve(OpMat A, int neigen, int size_initial_guess)
    
 }
 
-template void DavidsonSolver::solve<Eigen::MatrixXd>(Eigen::MatrixXd A, int neigen, int size_initial_guess=0);
-template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator A, int neigen, int size_initial_guess=0);
+template void DavidsonSolver::solve<Eigen::MatrixXd>(Eigen::MatrixXd &A, int neigen, int size_initial_guess=0);
+template void DavidsonSolver::solve<DavidsonOperator>(DavidsonOperator &A, int neigen, int size_initial_guess=0);
 
