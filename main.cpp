@@ -35,6 +35,7 @@ int main (int argc, char *argv[]){
         ("size", "dimension of the matrix", cxxopts::value<std::string>()->default_value("100"))
         ("neigen", "number of eigenvalues required", cxxopts::value<std::string>()->default_value("5"))
         ("jocc", "use Jacobi-Davidson", cxxopts::value<bool>())
+        ("mf", "use matrix free", cxxopts::value<bool>())
         ("linsolve", "method to solve the linear system of JOCC (0:CG, 1:GMRES, 2:LLT)", cxxopts::value<std::string>()->default_value("0"))
         ("help", "Print the help", cxxopts::value<bool>());
     auto result = options.parse(argc,argv);
@@ -49,6 +50,7 @@ int main (int argc, char *argv[]){
     int size = std::stoi(result["size"].as<std::string>(),nullptr);
     int neigen = std::stoi(result["neigen"].as<std::string>(),nullptr);
     bool jocc = result["jocc"].as<bool>();
+    bool mf = result["mf"].as<bool>();
     int linsolve = std::stoi(result["linsolve"].as<std::string>(),nullptr);
     bool help = result["help"].as<bool>();
 
@@ -61,75 +63,86 @@ int main (int argc, char *argv[]){
     std::cout << "Matrix size : " << size << "x" << size << std::endl;
     std::cout << "Num Threads : " <<  Eigen::nbThreads() << std::endl;
 
-    //=======================================
-    // Full matrix
-    //=======================================
 
-    // init the matrix
-    Eigen::MatrixXd A = init_matrix(size);
-
-    // start the solver
-    start = std::chrono::system_clock::now();
-    DavidsonSolver DS;
-
-    if (jocc)
+    if (mf)
     {
-        DS.set_jacobi_correction();
-        DS.set_jacobi_linsolve(linsolve);
+        //=======================================
+        // Matrix Free
+        //=======================================
+
+        // Create Operator
+        DavidsonOperator Aop(size);
+        Eigen::MatrixXd Afull = Aop.get_full_mat();
+
+        // Davidosn Solver
+        start = std::chrono::system_clock::now();
+        DavidsonSolver DSop;
+        if (jocc)
+        {
+            DSop.set_jacobi_correction();
+            DSop.set_jacobi_linsolve(linsolve);
+        }
+        DSop.solve(Aop,neigen);
+        end = std::chrono::system_clock::now();
+        elapsed_time = end-start;
+        std::cout << std::endl << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
+        
+        // normal eigensolver
+        start = std::chrono::system_clock::now();
+        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es2(Afull);
+        end = std::chrono::system_clock::now();
+        elapsed_time = end-start;
+        std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;
+
+        auto dseigop = DSop.eigenvalues();
+        auto eig2 = es2.eigenvalues().head(neigen);
+        std::cout << std::endl <<  "      Davidson  \tEigen" << std::endl;
+        for(int i=0; i< neigen; i++)
+            printf("#% 4d %8.7f \t%8.7f\n",i,dseigop(i),eig2(i));
+
+
     }
 
-    DS.solve(A,neigen);
-    end = std::chrono::system_clock::now();
-    elapsed_time = end-start;
-    std::cout << std::endl << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
-    
-    // Eigen solver 
-    start = std::chrono::system_clock::now();
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(A);
-    end = std::chrono::system_clock::now();
-    elapsed_time = end-start;
-    std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;
-
-    auto dseig = DS.eigenvalues();
-    auto eig = es.eigenvalues().head(neigen);
-    std::cout << std::endl << "      Davidson  \tEigen" << std::endl;
-    for(int i=0; i< neigen; i++)
-        printf("#% 4d %8.7f \t%8.7f\n",i,dseig(i),eig(i));
-
-
-    //=======================================
-    // Matrix Free
-    //=======================================
-
-    // Create Operator
-    DavidsonOperator Aop(size);
-    Eigen::MatrixXd Afull = Aop.get_full_mat();
-
-    // Davidosn Solver
-    start = std::chrono::system_clock::now();
-    DavidsonSolver DSop;
-    if (jocc)
+    else
     {
-        DSop.set_jacobi_correction();
-        DSop.set_jacobi_linsolve(linsolve);
-    }
-    DSop.solve(Aop,neigen);
-    end = std::chrono::system_clock::now();
-    elapsed_time = end-start;
-    std::cout << std::endl << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
-    
-    // normal eigensolver
-    start = std::chrono::system_clock::now();
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es2(Afull);
-    end = std::chrono::system_clock::now();
-    elapsed_time = end-start;
-    std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;
+        //=======================================
+        // Full matrix
+        //=======================================
 
-    auto dseigop = DSop.eigenvalues();
-    auto eig2 = es2.eigenvalues().head(neigen);
-    std::cout << std::endl <<  "      Davidson  \tEigen" << std::endl;
-    for(int i=0; i< neigen; i++)
-        printf("#% 4d %8.7f \t%8.7f\n",i,dseigop(i),eig2(i));
+        // init the matrix
+        Eigen::MatrixXd A = init_matrix(size);
+
+        // start the solver
+        start = std::chrono::system_clock::now();
+        DavidsonSolver DS;
+
+        if (jocc)
+        {
+            DS.set_jacobi_correction();
+            DS.set_jacobi_linsolve(linsolve);
+        }
+
+        DS.solve(A,neigen);
+        end = std::chrono::system_clock::now();
+        elapsed_time = end-start;
+        std::cout << std::endl << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
+        
+        // Eigen solver 
+        start = std::chrono::system_clock::now();
+        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(A);
+        end = std::chrono::system_clock::now();
+        elapsed_time = end-start;
+        std::cout << "Eigen                  : " << elapsed_time.count() << " secs" <<  std::endl;
+
+        auto dseig = DS.eigenvalues();
+        auto eig = es.eigenvalues().head(neigen);
+        std::cout << std::endl << "      Davidson  \tEigen" << std::endl;
+        for(int i=0; i< neigen; i++)
+            printf("#% 4d %8.7f \t%8.7f\n",i,dseig(i),eig(i));
+    }
+
+
+
     
 
 }

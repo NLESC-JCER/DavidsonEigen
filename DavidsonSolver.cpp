@@ -143,7 +143,7 @@ void DavidsonSolver::solve(OpMat &A, int neigen, int size_initial_guess)
 
     // temp varialbes 
     Eigen::MatrixXd T, U, q;
-    Eigen::VectorXd w,tmp;
+    Eigen::VectorXd w, tmp;
 
     // chrono !
     std::chrono::time_point<std::chrono::system_clock> start, end, instart, instop;
