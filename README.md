@@ -1,4 +1,4 @@
-# DavidsonEigen
+DavidsonEigen
 ===================
 
 This package contains a C++ implementation of the *Davidson diagonalization algorithms*. The calculation can be performed *matrix free*, i.e. without having to ever store the entire matrix. Different schemas are available to compute the correction.
@@ -20,7 +20,6 @@ the lowest 5 eigenvalues and corresponding eigenvectors, using the *GJD* method.
 
 ```C++
 #include <iostream>
-
 #include "DavidsonSolver.hpp"
 #include "DavidsonOperator.hpp"
 
@@ -36,8 +35,10 @@ int main (int argc, char *argv[]) {
     DS.solve(A,5);
 
     auto eigenvalues = DS.eigenvalues();
+    auto eigenvectors = DS.eigenvectors();
 
     return;
+}
 ```
 
 ### References:
