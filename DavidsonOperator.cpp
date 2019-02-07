@@ -8,24 +8,22 @@
 // constructors
 DavidsonOperator::DavidsonOperator(int size)
 {
-    OpSizeVal = size;
-    OpEpsVal = 0.01;
+    _size = size;
     diag_el = Eigen::VectorXd::Random(size,1) + Eigen::VectorXd::Ones(size,1);
-    diag_el *= 1E2;
 } 
 
 // get a row of the operator
 Eigen::RowVectorXd DavidsonOperator::row(int index) const
 {
-	Eigen::RowVectorXd row_out = Eigen::RowVectorXd::Zero(1,OpSizeVal);    
-    for (int j=0; j< OpSizeVal; j++)
+	Eigen::RowVectorXd row_out = Eigen::RowVectorXd::Zero(1,_size);    
+    for (int j=0; j< _size; j++)
     {
-        if (j==index)
-        {
-            row_out(0,j) = diag_el(j); 
+        if (j==index) {
+            row_out(j) = diag_el(j); 
         }
-        else
-            row_out(0,j) = 0.01 / std::pow( static_cast<double>(j-index),2) ;
+        else{
+            row_out(j) = _sparsity / std::pow( static_cast<double>(j-index),2) ;
+        }
     }
     return row_out;
 }
@@ -33,15 +31,15 @@ Eigen::RowVectorXd DavidsonOperator::row(int index) const
 //  get a col of the operator
 Eigen::VectorXd DavidsonOperator::col(int index) const
 {
-    Eigen::VectorXd col_out = Eigen::VectorXd::Zero(OpSizeVal,1);    
-    for (int j=0; j < OpSizeVal; j++)
+    Eigen::VectorXd col_out = Eigen::VectorXd::Zero(_size,1);    
+    for (int j=0; j < _size; j++)
     {
-        if (j==index)
-        {
-            col_out(j,0) = diag_el(j); 
+        if (j==index) {
+            col_out(j) = diag_el(j); 
         }
-        else
-            col_out(j,0) = 0.01 / std::pow( static_cast<double>(j-index),2) ;
+        else{
+            col_out(j) = _sparsity / std::pow( static_cast<double>(j-index),2) ;
+        }
     }
     return col_out;
 }

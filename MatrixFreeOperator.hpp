@@ -13,7 +13,6 @@ namespace Eigen { namespace internal {
 	}
 }
 
-
 class MatrixFreeOperator : public Eigen::EigenBase<Eigen::MatrixXd>
 {
 	public: 
@@ -28,8 +27,8 @@ class MatrixFreeOperator : public Eigen::EigenBase<Eigen::MatrixXd>
 			IsRowMajor = false
 		};
 
-		Index rows() const {return this-> OpSizeVal;}
-		Index cols() const {return this-> OpSizeVal;}
+		Index rows() const {return this-> _size;}
+		Index cols() const {return this-> _size;}
 
 		template<typename Vtype>
 		Eigen::Product<MatrixFreeOperator,Vtype,Eigen::AliasFreeProduct> operator*(const Eigen::MatrixBase<Vtype>& x) const {
@@ -40,21 +39,19 @@ class MatrixFreeOperator : public Eigen::EigenBase<Eigen::MatrixXd>
 		MatrixFreeOperator();
 
 		// convenience function
-		Eigen::MatrixXd get_full_mat();
-		Eigen::VectorXd diagonal();
-		int OpSize();
+		Eigen::MatrixXd get_full_mat() const;
+		Eigen::VectorXd diagonal() const;
+		int get_size() const {return this->_size;}
+		void set_size(int N) {this->_size = N;}
 
 		// extract row/col of the operator
 		virtual Eigen::RowVectorXd row(int index) const;
-		virtual Eigen::VectorXd col(int index) const;
-
-		int OpSizeVal;
-		double OpEpsVal;
+		virtual Eigen::VectorXd col(int index) const;	
 		Eigen::VectorXd diag_el;	
 
-	private:
+	protected:
 
-	
+		int _size;
 };
 
 namespace Eigen{

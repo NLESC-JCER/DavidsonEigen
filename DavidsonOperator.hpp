@@ -15,7 +15,7 @@ class DavidsonOperator : public MatrixFreeOperator
 		Eigen::VectorXd col(int index) const;
 
 	private:
-
+		double _sparsity = 0.01;
 };
 
 #endif
