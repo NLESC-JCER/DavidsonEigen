@@ -32,7 +32,7 @@ class DavidsonSolver
 		int max_search_space = 100;
 		int size_initial_guess = 0;
 		bool jacobi_correction=false;
-		std::string jacobi_linsolve = "CG";
+		int jacobi_linsolve = 0;
 
 		Eigen::VectorXd _eigenvalues;
 		Eigen::MatrixXd _eigenvectors; 
@@ -43,7 +43,7 @@ class DavidsonSolver
 
 		template <typename MatrixReplacement>
 		Eigen::MatrixXd _jacobi_orthogonal_correction(MatrixReplacement &A, Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda);
-
+		Eigen::VectorXd _dpr_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda, int size);
 };
 
 

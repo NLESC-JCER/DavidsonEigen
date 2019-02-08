@@ -37,19 +37,19 @@ Eigen::MatrixXd DavidsonSolver::_get_initial_eigenvectors(Eigen::VectorXd &d, in
 Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd &A, Eigen::VectorXd &r)
 {
     Eigen::MatrixXd w;
-    if(this->jacobi_linsolve == "CG") {
+    if(this->jacobi_linsolve == 0) {
         Eigen::ConjugateGradient<Eigen::MatrixXd, Eigen::Lower|Eigen::Upper> cg;
         cg.compute(A);
         w = cg.solve(r);
     }   
 
-    else if (this->jacobi_linsolve == "GMRES") {
+    else if (this->jacobi_linsolve == 1) {
         Eigen::GMRES<Eigen::MatrixXd, Eigen::IdentityPreconditioner> gmres;
         gmres.compute(A);
         w = gmres.solve(r);
     }
 
-    else if (this->jacobi_linsolve == "LLT") {
+    else if (this->jacobi_linsolve == 2) {
         w = A.llt().solve(r);
     }
 
@@ -71,6 +71,16 @@ Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(MatrixReplacement 
     return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
+Eigen::VectorXd DavidsonSolver::_dpr_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda, int size)
+{
+    Eigen::VectorXd out = Eigen::VectorXd::Zero(size);
+    
+    for (int i=0; i < size; i++){
+        out(i) = w(i) / (lambda - A0(i));
+    }
+    return out;
+}
+
 
 template<class MatrixReplacement>
 void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_guess)
@@ -88,7 +98,8 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
     std::cout << "===========================" << std::endl;
     std::cout << std::endl;
 
-    double norm;
+    double res_norm;
+    double conv;
     int size = A.rows();
 
     // initial guess size
@@ -107,6 +118,7 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
     // temp varialbes 
     Eigen::MatrixXd T, U, q;
     Eigen::VectorXd w, tmp;
+    Eigen::VectorXd old_val = Eigen::VectorXd::Zero(neigen);
 
     // chrono !
     std::chrono::time_point<std::chrono::system_clock> start, end, instart, instop;
@@ -133,16 +145,16 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
         U = es.eigenvectors();
         
         // Ritz eigenvectors
-        q = V.block(0,0,V.rows(),search_space)*U;
-        norm = 0.0;
+        q = V*U.block(0,0,U.rows(),neigen);
+        res_norm = 0.0;
 
         // residue vectors
-        for (int j=0; j<size_initial_guess; j++) {   
+        for (int j=0; j<neigen; j++) {   
 
             // residue vector
             w = A*q.col(j) - lambda(j)*q.col(j);
-            norm += w.norm();
-
+            res_norm += w.norm() / neigen;
+            
             // jacobi-davidson correction
             if (this->jacobi_correction)
             {
@@ -151,8 +163,9 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
             }
             
             // Davidson DPR
-            else  
-                w = w / ( lambda(j) - Adiag(j) );  
+            else  {
+                w = DavidsonSolver::_dpr_correction(w,Adiag,lambda(j),size);
+            }
 
             // append the correction vector to the search space
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
@@ -161,19 +174,19 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
         }
 
         // normalize the norm
-        norm /= search_space;
-        printf("%4d\t%12d\t%4.2e/%.0e\n", iiter,search_space,norm,tol);
+        conv = (lambda.head(neigen)-old_val).norm();
+        printf("%4d\t%12d\t%4.2e/%.0e %4.2e\n", iiter,search_space,res_norm,tol,conv);
         
         // break if converged, update otherwise
-        if (norm < tol) {
+        if (res_norm < tol) {
             break;
         }
         else
         {
-            search_space += size_initial_guess;
+            search_space = V.cols();
+            old_val = lambda.head(neigen);
         }
         
-
         // restart
         if (search_space > max_search_space)
         {
