@@ -9,18 +9,17 @@
 #include "DavidsonOperator.hpp"
 #include "MatrixFreeOperator.hpp"
 
-Eigen::MatrixXd init_matrix(int N)
+Eigen::MatrixXd init_matrix(int N, double eps)
 {
-    Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(N,N);
-    double eps = 0.001;
-    matrix = matrix + eps*Eigen::MatrixXd::Random(N,N);
+    Eigen::MatrixXd matrix;
+    matrix =  eps * Eigen::MatrixXd::Random(N,N);
     Eigen::MatrixXd tmat = matrix.transpose();
     matrix = matrix + tmat; 
 
     for (int i = 0; i<N; i++)
     {
-        //matrix(i,i) =  static_cast<double> (i+1);   
-        matrix(i,i) =  static_cast<double> (1. + (std::rand() %1000 ) / 10.);
+        matrix(i,i) = static_cast<double> (i+1);   
+        //matrix(i,i) =  static_cast<double> (1. + (std::rand() %1000 ) / 10.);
     }
 
     return matrix;
@@ -33,6 +32,7 @@ int main (int argc, char *argv[]){
     options.positional_help("[optional args]").show_positional_help();
     options.add_options()
         ("size", "dimension of the matrix", cxxopts::value<std::string>()->default_value("100"))
+        ("eps", "sparsity of the matrix", cxxopts::value<std::string>()->default_value("0.01"))
         ("neigen", "number of eigenvalues required", cxxopts::value<std::string>()->default_value("5"))
         ("jocc", "use Jacobi-Davidson", cxxopts::value<bool>())
         ("mf", "use matrix free", cxxopts::value<bool>())
@@ -53,6 +53,7 @@ int main (int argc, char *argv[]){
     bool mf = result["mf"].as<bool>();
     int linsolve = std::stoi(result["linsolve"].as<std::string>(),nullptr);
     bool help = result["help"].as<bool>();
+    double eps = std::stod(result["eps"].as<std::string>(),nullptr);
 
 
 
@@ -62,6 +63,7 @@ int main (int argc, char *argv[]){
 
     std::cout << "Matrix size : " << size << "x" << size << std::endl;
     std::cout << "Num Threads : " <<  Eigen::nbThreads() << std::endl;
+    std::cout << "eps : " <<  eps << std::endl;
 
 
     if (mf)
@@ -85,7 +87,7 @@ int main (int argc, char *argv[]){
         DSop.solve(Aop,neigen);
         end = std::chrono::system_clock::now();
         elapsed_time = end-start;
-        std::cout << std::endl << "Davidson               : " << elapsed_time.count() << " secs" <<  std::endl;
+        std::cout << std::endl << "Davidson MF               : " << elapsed_time.count() << " secs" <<  std::endl;
         
         // normal eigensolver
         start = std::chrono::system_clock::now();
@@ -110,7 +112,8 @@ int main (int argc, char *argv[]){
         //=======================================
 
         // init the matrix
-        Eigen::MatrixXd A = init_matrix(size);
+        Eigen::MatrixXd A = init_matrix(size,eps);
+        std::cout << "A" << std::endl << A.block(0,0,5,5) << std::endl;
 
         // start the solver
         start = std::chrono::system_clock::now();
