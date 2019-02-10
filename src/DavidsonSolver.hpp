@@ -44,6 +44,9 @@ class DavidsonSolver
 		template <typename MatrixReplacement>
 		Eigen::MatrixXd _jacobi_orthogonal_correction(MatrixReplacement &A, Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda);
 		Eigen::VectorXd _dpr_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda, int size);
+
+		template<class MatrixReplacement>
+		void _update_projected_matrix(Eigen::MatrixXd &T, MatrixReplacement &A, Eigen::MatrixXd &V);
 };
 
 

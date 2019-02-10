@@ -18,8 +18,8 @@ Eigen::MatrixXd init_matrix(int N, double eps)
 
     for (int i = 0; i<N; i++)
     {
-        matrix(i,i) = static_cast<double> (i+1);   
-        //matrix(i,i) =  static_cast<double> (1. + (std::rand() %1000 ) / 10.);
+        //matrix(i,i) = static_cast<double> (i+1);   
+        matrix(i,i) =  static_cast<double> (1. + (std::rand() %1000 ) / 10.);
     }
 
     return matrix;

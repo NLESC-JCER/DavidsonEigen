@@ -80,10 +80,10 @@ namespace Eigen{
 			}
 		};
 
-		// replacement of the mat*mat operation
+		// replacement of the operator*matrix operation
 		template<typename Mtype>
 		struct generic_product_impl<MatrixFreeOperator, Mtype, DenseShape, DenseShape, GemmProduct> 
-		: generic_product_impl_base<MatrixFreeOperator,Mtype,generic_product_impl<MatrixFreeOperator,Mtype>>
+		: generic_product_impl_base<MatrixFreeOperator, Mtype, generic_product_impl<MatrixFreeOperator,Mtype>>
 		{
 
 			typedef typename Product<MatrixFreeOperator,Mtype>::Scalar Scalar;
@@ -105,8 +105,6 @@ namespace Eigen{
 					
 			}
 		};
-
-
 	}
 }
 
