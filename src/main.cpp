@@ -34,9 +34,9 @@ int main (int argc, char *argv[]){
         ("size", "dimension of the matrix", cxxopts::value<std::string>()->default_value("100"))
         ("eps", "sparsity of the matrix", cxxopts::value<std::string>()->default_value("0.01"))
         ("neigen", "number of eigenvalues required", cxxopts::value<std::string>()->default_value("5"))
-        ("jocc", "use Jacobi-Davidson", cxxopts::value<bool>())
+        ("corr", "correction method", cxxopts::value<std::string>()->default_value("DPR"))
         ("mf", "use matrix free", cxxopts::value<bool>())
-        ("linsolve", "method to solve the linear system of JOCC (0:CG, 1:GMRES, 2:LLT)", cxxopts::value<std::string>()->default_value("0"))
+        ("linsolve", "method to solve the linear system of JOCC (CG, GMRES, LLT)", cxxopts::value<std::string>()->default_value("CG"))
         ("help", "Print the help", cxxopts::value<bool>());
     auto result = options.parse(argc,argv);
 
@@ -49,9 +49,9 @@ int main (int argc, char *argv[]){
 
     int size = std::stoi(result["size"].as<std::string>(),nullptr);
     int neigen = std::stoi(result["neigen"].as<std::string>(),nullptr);
-    bool jocc = result["jocc"].as<bool>();
     bool mf = result["mf"].as<bool>();
-    int linsolve = std::stoi(result["linsolve"].as<std::string>(),nullptr);
+    std::string linsolve = result["linsolve"].as<std::string>();
+    std::string correction = result["corr"].as<std::string>();
     bool help = result["help"].as<bool>();
     double eps = std::stod(result["eps"].as<std::string>(),nullptr);
 
@@ -79,11 +79,10 @@ int main (int argc, char *argv[]){
         // Davidosn Solver
         start = std::chrono::system_clock::now();
         DavidsonSolver DSop;
-        if (jocc)
-        {
-            DSop.set_jacobi_correction();
-            DSop.set_jacobi_linsolve(linsolve);
-        }
+
+        DSop.set_correction(correction);
+        if (correction == "JACOBI") DSop.set_jacobi_linsolve(linsolve);
+
         DSop.solve(Aop,neigen);
         end = std::chrono::system_clock::now();
         elapsed_time = end-start;
@@ -119,11 +118,8 @@ int main (int argc, char *argv[]){
         start = std::chrono::system_clock::now();
         DavidsonSolver DS;
 
-        if (jocc)
-        {
-            DS.set_jacobi_correction();
-            DS.set_jacobi_linsolve(linsolve);
-        }
+        DS.set_correction(correction);
+         if (correction =="JACOBI") DS.set_jacobi_linsolve(linsolve);
 
         DS.solve(A,neigen);
         end = std::chrono::system_clock::now();
