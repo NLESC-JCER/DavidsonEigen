@@ -269,10 +269,16 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
     this->_eigenvectors = q.block(0,0,q.rows(),neigen);
 
     std::cout << "-----------------------------------" << std::endl;
-    if (!has_converged)  std::cout << "- Warning : Davidson didn't converge ! " <<  std::endl; 
-    else                 std::cout << "- Davidson converged " <<  std::endl; 
-    printf("- final residue norm %4.2e\n",res_norm);
-    printf("- final eigenvalue norm %4.2e\n",conv);
+    if (!has_converged) {
+        std::cout << "- Warning : Davidson didn't converge ! " <<  std::endl; 
+        this->_eigenvalues = Eigen::VectorXd::Zero(neigen);
+        this->_eigenvectors = Eigen::MatrixXd::Zero(size,neigen);
+    }
+    else   {
+        std::cout << "- Davidson converged " <<  std::endl; 
+        printf("- final residue norm %4.2e\n",res_norm);
+        printf("- final eigenvalue norm %4.2e\n",conv);
+    }
     std::cout << "-----------------------------------" << std::endl;
     
 }

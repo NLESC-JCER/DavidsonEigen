@@ -61,6 +61,16 @@ message(STATUS "EIGEN Include: " ${EIGEN3_INCLUDE_DIR})
 #include_directories(${CXXOPTS_INCLUDE_DIR})
 #message(STATUS "CXXOPTS Include: " ${CXXOPTS_INCLUDE_DIR})
 
+find_package(Boost 1.57.0 REQUIRED COMPONENTS program_options filesystem system timer unit_test_framework)
+include_directories(${Boost_INCLUDE_DIRS})
+set (BOOST_CFLAGS_PKG "-I${Boost_INCLUDE_DIRS}")
+set(BOOST_LIBS_PKG "-L${Boost_LIBRARY_DIRS}")
+foreach(_blib ${Boost_LIBRARIES})
+  string(REGEX REPLACE ".*/lib([^/]*)\\.[^.]*$" "-l\\1" _blib ${_blib})
+  set(BOOST_LIBS_PKG "${BOOST_LIBS_PKG} ${_blib}")
+endforeach(_blib)
+
+
 # Testing
 option(ENABLE_TEST "enable test set" off)
 
@@ -70,3 +80,4 @@ option(ENABLE_TEST "enable test set" off)
 # MESSAGE(STATUS "DOXYGEN VERSION: " ${DOXYGEN_VERSION})
 
 add_subdirectory(src)
+add_subdirectory(test)
