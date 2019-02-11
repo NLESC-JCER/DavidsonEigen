@@ -19,7 +19,7 @@ Eigen::RowVectorXd DavidsonOperator::row(int index) const
     for (int j=0; j< _size; j++)
     {
         if (j==index) {
-            row_out(j) = diag_el(j); 
+            row_out(j) = static_cast<double> (j+1);  // diag_el(j); 
         }
         else{
             row_out(j) = _sparsity / std::pow( static_cast<double>(j-index),2) ;
@@ -35,7 +35,7 @@ Eigen::VectorXd DavidsonOperator::col(int index) const
     for (int j=0; j < _size; j++)
     {
         if (j==index) {
-            col_out(j) = diag_el(j); 
+            col_out(j) = static_cast<double> (j+1);   // diag_el(j); 
         }
         else{
             col_out(j) = _sparsity / std::pow( static_cast<double>(j-index),2) ;
