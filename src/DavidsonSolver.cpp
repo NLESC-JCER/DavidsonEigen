@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <Eigen/QR>
@@ -12,6 +13,21 @@
 #include "MatrixFreeOperator.hpp"
 
 DavidsonSolver::DavidsonSolver(){}
+
+
+void DavidsonSolver::set_correction(std::string method) {
+    if (method == "DPR") this->correction = CORR::DPR;
+    else if (method == "JACOBI") this->correction = CORR::JACOBI;
+    else if (method == "OLSEN") this->correction = CORR::OLSEN;
+    else throw std::runtime_error("Not a valid correction method");
+}
+
+void DavidsonSolver::set_jacobi_linsolve(std::string method) {
+    if (method == "CG") this->jacobi_linsolve = LSOLVE::CG;
+    else if (method == "GMRES") this->jacobi_linsolve = LSOLVE::GMRES;
+    else if (method == "LLT") this->jacobi_linsolve = LSOLVE::LLT;   
+    else throw std::runtime_error("Not a valid linsolve method");
+}
 
 Eigen::ArrayXd DavidsonSolver::_sort_index(Eigen::VectorXd& V)
 {
@@ -37,19 +53,19 @@ Eigen::MatrixXd DavidsonSolver::_get_initial_eigenvectors(Eigen::VectorXd &d, in
 Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd &A, Eigen::VectorXd &r)
 {
     Eigen::MatrixXd w;
-    if(this->jacobi_linsolve == 0) {
+    if(this->jacobi_linsolve == LSOLVE::CG) {
         Eigen::ConjugateGradient<Eigen::MatrixXd, Eigen::Lower|Eigen::Upper> cg;
         cg.compute(A);
         w = cg.solve(r);
     }   
 
-    else if (this->jacobi_linsolve == 1) {
+    else if (this->jacobi_linsolve == LSOLVE::GMRES) {
         Eigen::GMRES<Eigen::MatrixXd, Eigen::IdentityPreconditioner> gmres;
         gmres.compute(A);
         w = gmres.solve(r);
     }
 
-    else if (this->jacobi_linsolve == 2) {
+    else if (this->jacobi_linsolve == LSOLVE::LLT) {
         w = A.llt().solve(r);
     }
 
@@ -57,7 +73,7 @@ Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd &A, Eigen::
 }
 
 template <class MatrixReplacement>
-Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(MatrixReplacement &A, Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda)
+Eigen::MatrixXd DavidsonSolver::_jacobi_correction(MatrixReplacement &A, Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda)
 {
     // form the projector  P = I -u * u.T
     Eigen::MatrixXd P = -u*u.transpose();
@@ -71,10 +87,19 @@ Eigen::MatrixXd DavidsonSolver::_jacobi_orthogonal_correction(MatrixReplacement 
     return DavidsonSolver::_solve_linear_system(projA,r);
 }
 
-Eigen::VectorXd DavidsonSolver::_dpr_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda, int size)
+Eigen::VectorXd DavidsonSolver::_olsen_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda)
 {
+    Eigen::VectorXd out = Eigen::VectorXd::Zero(w.cols());
+    Eigen::VectorXd dpr = DavidsonSolver::_dpr_correction(w,A0,lambda);
+    double norm = w.transpose() * dpr;
+    out = - w + dpr/norm;
+    return out;
+}
+
+Eigen::VectorXd DavidsonSolver::_dpr_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda)
+{
+    int size = w.rows();
     Eigen::VectorXd out = Eigen::VectorXd::Zero(size);
-    
     for (int i=0; i < size; i++) {
         out(i) = w(i) / (lambda - A0(i));
     }
@@ -115,13 +140,12 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
 
     std::cout << std::endl;
     std::cout << "===========================" << std::endl; 
-    if(this->jacobi_correction)
-    {
-        std::cout << "= Jacobi-Davidson      " <<  std::endl; 
-        std::cout << "    linsolve : " << this->jacobi_linsolve << std::endl;
-    }
-    else
-        std::cout << "= Davidson (DPR)" <<  std::endl; 
+    if(this->correction == CORR::JACOBI)  std::cout << "= Jacobi-Davidson  : " << this->jacobi_linsolve <<  std::endl; 
+    
+    else if (this->correction == CORR::OLSEN)  std::cout << "= Olsen-Davidson  : " <<  std::endl;    
+    
+    else  std::cout << "= Davidson (DPR)" <<  std::endl; 
+
     std::cout << "===========================" << std::endl;
     std::cout << std::endl;
 
@@ -178,15 +202,18 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
             res_norm += w.norm() / neigen;
             
             // jacobi-davidson correction
-            if (this->jacobi_correction)
-            {
+            if (this->correction == CORR::JACOBI) {
                 tmp = q.col(j);
-                w = DavidsonSolver::_jacobi_orthogonal_correction<MatrixReplacement>(A,w,tmp,lambda(j));
+                w = DavidsonSolver::_jacobi_correction<MatrixReplacement>(A,w,tmp,lambda(j));
+            }
+
+            else if (this->correction == CORR::OLSEN) {
+                w = DavidsonSolver::_olsen_correction(w,Adiag,lambda(j));
             }
             
             // Davidson DPR
             else  {
-                w = DavidsonSolver::_dpr_correction(w,Adiag,lambda(j),size);
+                w = DavidsonSolver::_dpr_correction(w,Adiag,lambda(j));
             }
 
             // append the correction vector to the search space
@@ -213,6 +240,9 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
         if (search_space > max_search_space or search_space > size )
         {
             V = q.block(0,0,V.rows(),neigen);
+            for (int j=0; j<neigen; j++) {
+                V.col(j) = V.col(j).normalized();
+            }
             search_space = neigen;
 
             // recompute the projected matrix
