@@ -191,8 +191,8 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
 
             // append the correction vector to the search space
             V.conservativeResize(Eigen::NoChange,V.cols()+1);
-            V.col(V.cols()-1) = w;
-
+            V.col(V.cols()-1) = w.normalized();
+            
         }
 
         // eigenvalue norm
