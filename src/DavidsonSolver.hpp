@@ -31,7 +31,7 @@ class DavidsonSolver
 		double tol = 1E-6;
 		int max_search_space = 100;
 		int size_initial_guess = 0;
-		bool jacobi_correction=false;
+		bool jacobi_correction = false;
 		int jacobi_linsolve = 0;
 
 		Eigen::VectorXd _eigenvalues;
@@ -40,6 +40,7 @@ class DavidsonSolver
 		Eigen::ArrayXd _sort_index(Eigen::VectorXd &V);
 		Eigen::MatrixXd _get_initial_eigenvectors(Eigen::VectorXd &D, int size);
 		Eigen::MatrixXd _solve_linear_system(Eigen::MatrixXd &A, Eigen::VectorXd &b); 
+		Eigen::MatrixXd _QR(Eigen::MatrixXd &A);
 
 		template <typename MatrixReplacement>
 		Eigen::MatrixXd _jacobi_orthogonal_correction(MatrixReplacement &A, Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda);

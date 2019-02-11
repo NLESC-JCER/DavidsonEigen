@@ -75,9 +75,10 @@ Eigen::VectorXd DavidsonSolver::_dpr_correction(Eigen::VectorXd &w, Eigen::Vecto
 {
     Eigen::VectorXd out = Eigen::VectorXd::Zero(size);
     
-    for (int i=0; i < size; i++){
+    for (int i=0; i < size; i++) {
         out(i) = w(i) / (lambda - A0(i));
     }
+
     return out;
 }
 
@@ -94,6 +95,17 @@ void DavidsonSolver::_update_projected_matrix(Eigen::MatrixXd &T, MatrixReplacem
     T.block(nvec_old,0,nnew_vec,nvec_old) = T.block(0,nvec_old,nvec_old,nnew_vec).transpose();
 
     return;
+}
+
+Eigen::MatrixXd DavidsonSolver::_QR(Eigen::MatrixXd &A)
+{
+    
+    int nrows = A.rows();
+    int ncols = A.cols();
+    ncols = std::min(nrows,ncols);
+    
+    Eigen::HouseholderQR<Eigen::MatrixXd> qr(A);
+    return qr.householderQ() * Eigen::MatrixXd::Identity(nrows,ncols);
 }
 
 
@@ -125,15 +137,18 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
     // initialize the guess eigenvector
     Eigen::VectorXd Adiag = A.diagonal();    
     Eigen::MatrixXd V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
-    std::sort(Adiag.data(),Adiag.data()+Adiag.size());
+    //Eigen::MatrixXd V = Eigen::MatrixXd::Identity(size,size_initial_guess);
 
-    Eigen::MatrixXd thinQ; // thin matrix for QR
+    // sort the diagonal elements -> apparently detrimental ...
+    // std::sort(Adiag.data(),Adiag.data()+Adiag.size());
+    
     Eigen::VectorXd lambda; // eigenvalues hodlers
+    Eigen::VectorXd old_val = Eigen::VectorXd::Zero(neigen);
     
     // temp varialbes 
     Eigen::MatrixXd T, U, q;
     Eigen::VectorXd w, tmp;
-    Eigen::VectorXd old_val = Eigen::VectorXd::Zero(neigen);
+    
 
     // project the matrix on the trial subspace
     T = A * V;
@@ -149,7 +164,8 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
         Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(T);
         lambda = es.eigenvalues();
         U = es.eigenvectors();
-        
+
+
         // Ritz eigenvectors
         q = V*U.block(0,0,U.rows(),neigen);
         res_norm = 0.0;
@@ -182,6 +198,10 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
         // eigenvalue norm
         conv = (lambda.head(neigen)-old_val).norm();
         printf("%4d\t%12d\t%4.2e\n", iiter,search_space,res_norm);
+
+        // update 
+        search_space = V.cols();
+        old_val = lambda.head(neigen);
         
         // break if converged, update otherwise
         if (res_norm < tol) {
@@ -189,32 +209,29 @@ void DavidsonSolver::solve(MatrixReplacement &A, int neigen, int size_initial_gu
             break;
         }
 
+        // check if we need to restart
+        if (search_space > max_search_space or search_space > size )
+        {
+            V = q.block(0,0,V.rows(),neigen);
+            search_space = neigen;
+
+            // recompute the projected matrix
+            T = A * V;
+            T = V.transpose()*T;
+        }
+
+        // continue otherwise
         else
         {
-            search_space = V.cols();
-            old_val = lambda.head(neigen);
-
             // orthogonalize the V vectors
-            thinQ = Eigen::MatrixXd::Identity(V.rows(),V.cols());
-            Eigen::HouseholderQR<Eigen::MatrixXd> qr(V);
-            V = qr.householderQ() * thinQ;
-
+            V = DavidsonSolver::_QR(V);
+            
             // update the T matrix : avoid recomputing V.T A V 
             // just recompute the element relative to the new eigenvectors
             DavidsonSolver::_update_projected_matrix<MatrixReplacement>(T,A,V);
 
         }
         
-        // restart
-        if (search_space > max_search_space or search_space > size )
-        {
-            V = q.block(0,0,V.rows(),neigen);
-            search_space = size_initial_guess;
-
-            // recompute the projected matrix
-            T = A * V;
-            T = V.transpose()*T;
-        }
     }
 
     // store the eigenvalues/eigenvectors
