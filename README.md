@@ -30,7 +30,7 @@ int main (int argc, char *argv[]) {
 
     // Davidson Solver
     DavidsonSolver DS;
-    DS.set_jacobi_correction();
+    DS.set_correction("JACOBI");
     DS.set_jacobi_linsolve("CG");
     DS.solve(A,5);
 
