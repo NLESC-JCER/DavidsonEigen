@@ -21,7 +21,7 @@ before_install:
   - conda update --yes conda
 
 install:
-  - conda install -c conda-forge cxxopts
+  - conda install --yes -c conda-forge cxxopts
 
 script:
   - cmake -H. -Bbuild 
