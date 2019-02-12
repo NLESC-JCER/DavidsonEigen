@@ -11,8 +11,10 @@ include(CheckIncludeFileCXX)
 include(CheckIncludeFiles)
 include(ExternalProject)
 
-include(CTest)
+
 set( CMAKE_VERBOSE_MAKEFILE on )
+
+set(CMAKE_CXX_STANDARD 11)
 
 # Compile with optimization by default
 if(NOT CMAKE_BUILD_TYPE)
