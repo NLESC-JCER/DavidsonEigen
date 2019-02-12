@@ -6,10 +6,10 @@
 MatrixFreeOperator::MatrixFreeOperator(){}
 
 // virtual here : get a row of the operator
-Eigen::RowVectorXd MatrixFreeOperator::row(int index) const
-{
-   throw std::runtime_error("MatrixFreeOperator.row() not defined in class");
-}
+// Eigen::RowVectorXd MatrixFreeOperator::row(int index) const
+// {
+//    throw std::runtime_error("MatrixFreeOperator.row() not defined in class");
+// }
 
 // virtual here : get a col of the operator
 Eigen::VectorXd MatrixFreeOperator::col(int index) const
@@ -20,10 +20,10 @@ Eigen::VectorXd MatrixFreeOperator::col(int index) const
 Eigen::VectorXd MatrixFreeOperator::diagonal() const
 {
     Eigen::VectorXd D = Eigen::VectorXd::Zero(_size,1);
-    Eigen::RowVectorXd row_data;
+    Eigen::VectorXd col_data;
     for(int i=0; i<_size;i++) {
-        row_data = this->row(i);
-        D(i) = row_data(i);
+        col_data = this->col(i);
+        D(i) = col_data(i);
     }
     return D;
 }
@@ -33,7 +33,7 @@ Eigen::MatrixXd MatrixFreeOperator::get_full_mat() const
 {
 	Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(_size,_size);
     for(int i=0; i<_size; i++){
-        matrix.row(i) = this->row(i);
+        matrix.col(i) = this->col(i);
     }
     return matrix; 
 }

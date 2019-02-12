@@ -45,8 +45,8 @@ class MatrixFreeOperator : public Eigen::EigenBase<Eigen::MatrixXd>
 		void set_size(int N) {this->_size = N;}
 
 		// extract row/col of the operator
-		virtual Eigen::RowVectorXd row(int index) const;
-		virtual Eigen::VectorXd col(int index) const;	
+		// virtual Eigen::RowVectorXd row(int index) const = 0;
+		virtual Eigen::VectorXd col(int index) const = 0;	
 		Eigen::VectorXd diag_el;	
 
 	protected:
