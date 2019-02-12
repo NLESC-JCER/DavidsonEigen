@@ -1,8 +1,5 @@
 sudo: require
-language: python
 
-python:
-  - 3.6
 addons:
   apt:
     sources:
@@ -11,6 +8,7 @@ addons:
       - cmake
       - libblas-dev
       - liblapack-dev
+      - libeigen3-dev
       
 script:
   - cmake -H. -Bbuild 
