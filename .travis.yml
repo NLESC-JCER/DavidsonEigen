@@ -10,6 +10,7 @@ addons:
       - libblas-dev
       - liblapack-dev
       - libeigen3-dev
+      - libboost-all-dev
       
 script:
   - cmake -H. -Bbuild 
