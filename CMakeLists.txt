@@ -53,7 +53,7 @@ else()
 endif(MKL_FOUND)
 
 # search for Eigen
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package (Eigen3 REQUIRED NO_MODULE)
 include_directories(${EIGEN3_INCLUDE_DIR})
 message(STATUS "EIGEN Include: " ${EIGEN3_INCLUDE_DIR})
 
