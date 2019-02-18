@@ -37,6 +37,7 @@ int main (int argc, char *argv[]){
         ("mf", "use matrix free", cxxopts::value<bool>())
         ("diag", "diagonal elements are ordered" , cxxopts::value<bool>())
         ("linsolve", "method to solve the linear system of JOCC (CG, GMRES, LLT)", cxxopts::value<std::string>()->default_value("CG"))
+        ("lstol", "tolerance of the linear solver", cxxopts::value<std::string>()->default_value("0.01"))
         ("help", "Print the help", cxxopts::value<bool>());
     auto result = options.parse(argc,argv);
 
@@ -55,6 +56,7 @@ int main (int argc, char *argv[]){
     std::string correction = result["corr"].as<std::string>();
     bool help = result["help"].as<bool>();
     double eps = std::stod(result["eps"].as<std::string>(),nullptr);
+    double lsolve_tol = std::stod(result["lstol"].as<std::string>(),nullptr);
 
     // chrono    
     std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -65,7 +67,7 @@ int main (int argc, char *argv[]){
     std::cout << "eps : " <<  eps << std::endl;
 
     // Create Operator
-    DavidsonOperator Aop(size,odiag);
+    DavidsonOperator Aop(size,eps,odiag);
     Eigen::MatrixXd Afull = Aop.get_full_mat();
 
     // Davidosn Solver
@@ -73,7 +75,10 @@ int main (int argc, char *argv[]){
     DavidsonSolver DS;
 
     DS.set_correction(correction);
-    if (correction == "JACOBI") DS.set_jacobi_linsolve(linsolve);
+    if (correction == "JACOBI") {
+        DS.set_jacobi_linsolve(linsolve);
+        DS.set_linsolve_tol(lsolve_tol);
+    }
 
     if (mf) DS.solve(Aop,neigen);
     else  DS.solve(Afull,neigen);

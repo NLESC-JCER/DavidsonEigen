@@ -16,6 +16,7 @@ class DavidsonSolver
 		void set_tolerance(double eps) { this->tol = eps; }
 		void set_max_search_space(int N) { this->max_search_space = N;}
 		void set_initial_guess_size(int N) {this->size_initial_guess=N;}
+		void set_linsolve_tol(double tol){this->linsolve_tol=tol;}
 
 		void set_correction(std::string method); 
 		void set_jacobi_linsolve(std::string method);
@@ -97,7 +98,8 @@ class DavidsonSolver
 		            }
 
 		            else if (this->correction == CORR::OLSEN) {
-		                w = DavidsonSolver::_olsen_correction(w,Adiag,lambda(j));
+		            	tmp = q.col(j);
+		                w = DavidsonSolver::_olsen_correction(w,tmp,Adiag,lambda(j));
 		            }
 		            
 		            // Davidson DPR
@@ -118,7 +120,7 @@ class DavidsonSolver
 		        // update 
 		        search_space = V.cols();
 		        old_val = lambda.head(neigen);
-		        
+		        		       
 		        // break if converged, update otherwise
 		        if (res_norm < tol) {
 		            has_converged = true;
@@ -183,6 +185,7 @@ class DavidsonSolver
 		double tol = 1E-6;
 		int max_search_space = 100;
 		int size_initial_guess = 0;
+		double linsolve_tol = 1E-3;
 
 		enum CORR {DPR,JACOBI,OLSEN};
 		enum LSOLVE {CG,GMRES,LLT};
@@ -201,6 +204,11 @@ class DavidsonSolver
 		template <typename MatrixReplacement>
 		Eigen::MatrixXd _jacobi_correction(MatrixReplacement &A, Eigen::VectorXd &r, Eigen::VectorXd &u, double lambda) const
 		{
+
+			std::chrono::time_point<std::chrono::system_clock> start, end;
+    		std::chrono::duration<double> elapsed_time;
+
+    		start = std::chrono::system_clock::now();
 		    // form the projector  P = I -u * u.T
 		    Eigen::MatrixXd P = -u*u.transpose();
 		    P.diagonal().array() += 1.0;
@@ -209,12 +217,14 @@ class DavidsonSolver
 		    Eigen::MatrixXd projA = A*P.transpose();
 		    projA -= lambda*P.transpose();
 		    projA = P * projA;
-
+		    end = std::chrono::system_clock::now();
+		    elapsed_time = end-start;
+		    std::cout << "_ form linear system " << this->jacobi_linsolve << " in " << elapsed_time.count() << " secs" <<  std::endl;
 		    return DavidsonSolver::_solve_linear_system(projA,r);
 		}
 
 		Eigen::VectorXd _dpr_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda) const;
-		Eigen::VectorXd _olsen_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda) const;
+		Eigen::VectorXd _olsen_correction(Eigen::VectorXd &r, Eigen::VectorXd &x, Eigen::VectorXd &D, double lambda) const;
 
 		template<class MatrixReplacement>
 		void _update_projected_matrix(Eigen::MatrixXd &T, MatrixReplacement &A, Eigen::MatrixXd &V) const

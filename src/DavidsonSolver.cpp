@@ -51,16 +51,22 @@ Eigen::MatrixXd DavidsonSolver::_get_initial_eigenvectors(Eigen::VectorXd &d, in
 Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd &A, Eigen::VectorXd &r) const
 {
     Eigen::MatrixXd w;
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::duration<double> elapsed_time;
+
+    start = std::chrono::system_clock::now();
     switch (this->jacobi_linsolve) {
 
         case LSOLVE::CG :  {
                 Eigen::ConjugateGradient<Eigen::MatrixXd, Eigen::Lower|Eigen::Upper> cg;
+                cg.setTolerance(this->linsolve_tol);
                 cg.compute(A);
                 w = cg.solve(r); 
             }
             break;
         case LSOLVE::GMRES : {
                 Eigen::GMRES<Eigen::MatrixXd, Eigen::IdentityPreconditioner> gmres;
+                gmres.setTolerance(this->linsolve_tol);
                 gmres.compute(A);
                 w = gmres.solve(r);
             }
@@ -69,17 +75,31 @@ Eigen::MatrixXd DavidsonSolver::_solve_linear_system(Eigen::MatrixXd &A, Eigen::
             w = A.llt().solve(r);
             break;
     }
-
+    end = std::chrono::system_clock::now();
+    elapsed_time  = end-start;
+    std::cout << "_ solve linear system " << this->jacobi_linsolve << " in " << elapsed_time.count() << " secs" <<  std::endl;
     return w;
 }
 
-Eigen::VectorXd DavidsonSolver::_olsen_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda) const
+Eigen::VectorXd DavidsonSolver::_olsen_correction(Eigen::VectorXd &r, Eigen::VectorXd &x, Eigen::VectorXd &D, double lambda) const
 {
-    Eigen::VectorXd out = Eigen::VectorXd::Zero(w.cols());
-    Eigen::VectorXd dpr = DavidsonSolver::_dpr_correction(w,A0,lambda);
-    double norm = w.transpose() * dpr;
-    out = - w + dpr/norm;
-    return out;
+    /* Compute the olsen correction :
+
+    \delta = (D-\lambda)^{-1} (-r + \epsilon x)
+
+    */
+
+    int size = r.rows();
+    Eigen::VectorXd delta = Eigen::VectorXd::Zero(size);
+
+    delta = DavidsonSolver::_dpr_correction(r,D,lambda);
+
+    double _num = - x.transpose() * delta;
+    double _denom = - x.transpose() * DavidsonSolver::_dpr_correction(x,D,lambda);
+    double eps = _num / _denom;
+    delta += eps * x;
+
+    return delta;
 }
 
 Eigen::VectorXd DavidsonSolver::_dpr_correction(Eigen::VectorXd &w, Eigen::VectorXd &A0, double lambda) const

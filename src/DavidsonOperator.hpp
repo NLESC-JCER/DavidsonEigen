@@ -10,8 +10,7 @@ class DavidsonOperator : public MatrixFreeOperator
 {
 	public: 
 
-		DavidsonOperator(int n, bool d);
-		Eigen::RowVectorXd row(int index) const;
+		DavidsonOperator(int n, double eps, bool d);
 		Eigen::VectorXd col(int index) const;
 
 	private:
