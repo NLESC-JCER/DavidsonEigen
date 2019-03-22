@@ -10,19 +10,56 @@
 #include "DavidsonOperator.hpp"
 #include "MatrixFreeOperator.hpp"
 
-Eigen::MatrixXd init_matrix(int N, double eps, bool diag)
-{
-    Eigen::MatrixXd matrix;
-    matrix =  eps * Eigen::MatrixXd::Random(N,N);
-    Eigen::MatrixXd tmat = matrix.transpose();
-    matrix = matrix + tmat; 
 
-    for (int i = 0; i<N; i++) {
-        if(diag)    matrix(i,i) = static_cast<double> (i+1);   
-        else        matrix(i,i) =  static_cast<double> (1. + (std::rand() %1000 ) / 10.);
-    }
-    return matrix;
-}
+#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+#define MAXBUFSIZE  ((int) 1e6)
+
+Eigen::MatrixXd readMatrix(const char *filename)
+    {
+    int cols = 0, rows = 0;
+    double buff[MAXBUFSIZE];
+
+    // Read numbers from file into buffer.
+    ifstream infile;
+    infile.open(filename);
+    while (! infile.eof())
+        {
+        string line;
+        getline(infile, line);
+
+        int temp_cols = 0;
+        stringstream stream(line);
+        while(! stream.eof())
+            stream >> buff[cols*rows+temp_cols++];
+
+        if (temp_cols == 0)
+            continue;
+
+        if (cols == 0)
+            cols = temp_cols;
+
+        rows++;
+        }
+
+    infile.close();
+
+    rows--;
+
+    // Populate matrix with numbers.
+    Eigen::MatrixXd result(rows,cols);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            result(i,j) = buff[ cols*i+j ];
+
+    return result;
+    };
+
+
 
 int main (int argc, char *argv[]){
 
@@ -36,7 +73,10 @@ int main (int argc, char *argv[]){
         ("corr", "correction method", cxxopts::value<std::string>()->default_value("DPR"))
         ("mf", "use matrix free", cxxopts::value<bool>())
         ("diag", "diagonal elements are ordered" , cxxopts::value<bool>())
+        ("reorder", "reorder diagonal elements" , cxxopts::value<bool>())
         ("linsolve", "method to solve the linear system of JOCC (CG, GMRES, LLT)", cxxopts::value<std::string>()->default_value("CG"))
+        ("init", "method to itialize the eigenvector (target, indentity, random)", cxxopts::value<std::string>()->default_value("target"))
+        ("tol", "tolerance on the residue norm", cxxopts::value<std::string>()->default_value("1E-4"))
         ("lstol", "tolerance of the linear solver", cxxopts::value<std::string>()->default_value("0.01"))
         ("help", "Print the help", cxxopts::value<bool>());
     auto result = options.parse(argc,argv);
@@ -52,10 +92,13 @@ int main (int argc, char *argv[]){
     int neigen = std::stoi(result["neigen"].as<std::string>(),nullptr);
     bool mf = result["mf"].as<bool>();
     bool odiag = result["diag"].as<bool>();
+    bool reorder = result["reorder"].as<bool>();
     std::string linsolve = result["linsolve"].as<std::string>();
+    std::string eigen_init = result["init"].as<std::string>();
     std::string correction = result["corr"].as<std::string>();
     bool help = result["help"].as<bool>();
     double eps = std::stod(result["eps"].as<std::string>(),nullptr);
+    double davidson_tol = std::stod(result["tol"].as<std::string>(),nullptr);
     double lsolve_tol = std::stod(result["lstol"].as<std::string>(),nullptr);
 
     // chrono    
@@ -67,14 +110,18 @@ int main (int argc, char *argv[]){
     std::cout << "eps : " <<  eps << std::endl;
 
     // Create Operator
-    DavidsonOperator Aop(size,eps,odiag);
+    DavidsonOperator Aop(size,eps,odiag,reorder);
     Eigen::MatrixXd Afull = Aop.get_full_mat();
+    std::cout << "Afull" << std::endl << Afull.block(0,0,5,5) << std::endl;
 
     // Davidosn Solver
     start = std::chrono::system_clock::now();
     DavidsonSolver DS;
 
+    DS.set_guess_vectors(eigen_init);
     DS.set_correction(correction);
+    DS.set_tolerance(davidson_tol);
+
     if (correction == "JACOBI") {
         DS.set_jacobi_linsolve(linsolve);
         DS.set_linsolve_tol(lsolve_tol);
@@ -96,8 +143,8 @@ int main (int argc, char *argv[]){
     
     auto dseigop = DS.eigenvalues();
     auto eig2 = es2.eigenvalues().head(neigen);
-    std::cout << std::endl <<  "      Davidson  \tEigen" << std::endl;
+    std::cout << std::endl <<  "      Davidson  \tEigen \t\t Error" << std::endl;
     for(int i=0; i< neigen; i++)
-        printf("#% 4d %8.7f \t%8.7f\n",i,dseigop(i),eig2(i));
+        printf("#% 4d %8.7f \t%8.7f \t %4.2e\n",i,dseigop(i),eig2(i),abs(eig2(i)-dseigop(i)));
 
 }

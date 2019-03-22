@@ -73,4 +73,4 @@ foreach(_blib ${Boost_LIBRARIES})
 endforeach(_blib)
 
 add_subdirectory(src)
-add_subdirectory(test)
+#add_subdirectory(test)

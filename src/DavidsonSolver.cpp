@@ -38,13 +38,26 @@ Eigen::ArrayXd DavidsonSolver::_sort_index(Eigen::VectorXd& V) const
 Eigen::MatrixXd DavidsonSolver::_get_initial_eigenvectors(Eigen::VectorXd &d, int size_initial_guess) const
 {
 
-    Eigen::MatrixXd guess = Eigen::MatrixXd::Zero(d.size(),size_initial_guess);
-    Eigen::ArrayXd idx = DavidsonSolver::_sort_index(d);
-
-    for (int j=0; j<size_initial_guess;j++) {
-        guess(idx(j),j) = 1.0;
+    Eigen::MatrixXd guess;
+    if (this->guess_vectors =="identity")
+    {
+            guess = Eigen::MatrixXd::Identity(d.size(),size_initial_guess);
     }
 
+    else if (this->guess_vectors == "random")
+    {
+        guess = Eigen::MatrixXd::Random(d.size(),size_initial_guess);
+        guess = DavidsonSolver::_QR(guess);
+    }
+    else if (this->guess_vectors=="target")
+    {
+        guess = Eigen::MatrixXd::Zero(d.size(),size_initial_guess);
+        Eigen::ArrayXd idx = DavidsonSolver::_sort_index(d);
+
+        for (int j=0; j<size_initial_guess;j++) {
+            guess(idx(j),j) = 1.0;
+        }
+    }
     return guess;
 }
 
@@ -122,6 +135,25 @@ Eigen::MatrixXd DavidsonSolver::_QR(Eigen::MatrixXd &A) const
     
     Eigen::HouseholderQR<Eigen::MatrixXd> qr(A);
     return qr.householderQ() * Eigen::MatrixXd::Identity(nrows,ncols);
+}
+
+
+Eigen::MatrixXd DavidsonSolver::_gramschmidt( Eigen::MatrixXd &A, int nstart ) const
+{
+    Eigen::MatrixXd Q = A;
+
+    for(unsigned int j = nstart; j < A.cols(); ++j) {
+        // Replace inner loop over each previous vector in Q with fast matrix-vector multiplication
+        Q.col(j) -= Q.leftCols(j) * (Q.leftCols(j).transpose() * A.col(j));
+        // Normalize vector if possible (othw. means colums of A almsost lin. dep.
+        if( Q.col(j).norm() <= 10e-14 * A.col(j).norm() ) {
+            std::cerr << "Gram-Schmidt failed because A has lin. dep columns. Bye." << std::endl;
+            break;
+        } else {
+            Q.col(j).normalize();
+        }
+    }
+    return Q;
 }
 
 
