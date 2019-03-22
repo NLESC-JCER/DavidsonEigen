@@ -5,11 +5,6 @@
 
 MatrixFreeOperator::MatrixFreeOperator(){}
 
-// virtual here : get a row of the operator
-// Eigen::RowVectorXd MatrixFreeOperator::row(int index) const
-// {
-//    throw std::runtime_error("MatrixFreeOperator.row() not defined in class");
-// }
 
 // virtual here : get a col of the operator
 Eigen::VectorXd MatrixFreeOperator::col(int index) const
@@ -32,6 +27,8 @@ Eigen::VectorXd MatrixFreeOperator::diagonal() const
 Eigen::MatrixXd MatrixFreeOperator::get_full_mat() const
 {
 	Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(_size,_size);
+
+    #pragma openmp parallel for
     for(int i=0; i<_size; i++){
         matrix.col(i) = this->col(i);
     }
