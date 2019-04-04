@@ -42,9 +42,6 @@ class DavidsonSolver
 		    std::cout << "===========================" << std::endl;
 		    std::cout << std::endl;
 
-		    //double res_norm;
-		    Eigen::ArrayXd res_norm = Eigen::ArrayXd::Zero(neigen);
-		    Eigen::ArrayXd root_converged = Eigen::ArrayXd::Zero(neigen);
 		    
 		    int size = A.rows();
 		    bool has_converged = false;
@@ -56,8 +53,11 @@ class DavidsonSolver
 		    		size_initial_guess = 10;
 		    }
 		    int search_space = size_initial_guess;
-		    max_search_space = 2*size_initial_guess;
 
+		    max_search_space = 10*size_initial_guess;
+		    if (max_search_space>size)
+		    	max_search_space=size;
+		    
 		    int nupdate;
 		    int size_update = neigen + 10;
 
@@ -76,7 +76,7 @@ class DavidsonSolver
 		    Eigen::VectorXd w, tmp;
 		    
 		    // project the matrix on the trial subspace
-		    T = V.transpose*(A * V);
+		    T = V.transpose()*(A * V);
 
 		    printf("iter\tSearch Space\tNorm/%.0e\n",tol);
 		    std::cout << "-----------------------------------" << std::endl;
@@ -130,7 +130,6 @@ class DavidsonSolver
 		        }
 
 		        // eigenvalue norm
-		        lambda_conv = (lambda.head(neigen)-old_val).array().abs();
 		        printf("%4d\t%12d\t%4.2e\t\t%4.1f%% converged\n", iiter,search_space,res_norm.head(neigen).maxCoeff(),100*root_converged.head(neigen).sum()/neigen);
 
 		        // update 
@@ -145,7 +144,7 @@ class DavidsonSolver
 		        // check if we need to restart
 		        if (search_space > max_search_space or search_space > size )
 		        {
-
+		        	printf("Restart %d/%d/%d\n",search_space,max_search_space,size);
 		            V = q.leftCols(size_initial_guess);
 		            for (int j=0; j<neigen; j++) {
 		                V.col(j) = V.col(j).normalized();
