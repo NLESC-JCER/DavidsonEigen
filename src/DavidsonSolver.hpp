@@ -45,7 +45,7 @@ class DavidsonSolver
 		    //double res_norm;
 		    Eigen::ArrayXd res_norm = Eigen::ArrayXd::Zero(neigen);
 		    Eigen::ArrayXd root_converged = Eigen::ArrayXd::Zero(neigen);
-		    Eigen::ArrayXd lambda_conv = Eigen::ArrayXd::Zero(neigen);
+		    
 		    int size = A.rows();
 		    bool has_converged = false;
 
@@ -58,21 +58,25 @@ class DavidsonSolver
 		    int search_space = size_initial_guess;
 		    max_search_space = 2*size_initial_guess;
 
+		    int nupdate;
+		    int size_update = neigen + 10;
+
+		    //double res_norm;
+		    Eigen::ArrayXd res_norm = Eigen::ArrayXd::Zero(size_update);
+		    Eigen::ArrayXd root_converged = Eigen::ArrayXd::Zero(size_update);
+
 		    // initialize the guess eigenvector
 		    Eigen::VectorXd Adiag = A.diagonal();    
 		    Eigen::MatrixXd V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
 
 		    Eigen::VectorXd lambda; // eigenvalues hodlers
-		    Eigen::VectorXd old_val = Eigen::VectorXd::Zero(neigen);
 		    
 		    // temp varialbes 
 		    Eigen::MatrixXd T, U, q;
 		    Eigen::VectorXd w, tmp;
 		    
-
 		    // project the matrix on the trial subspace
-		    T = A * V;
-		    T = V.transpose()*T;
+		    T = V.transpose*(A * V);
 
 		    printf("iter\tSearch Space\tNorm/%.0e\n",tol);
 		    std::cout << "-----------------------------------" << std::endl;
@@ -86,54 +90,54 @@ class DavidsonSolver
 		        U = es.eigenvectors();
 
 		        // Ritz eigenvectors
-		        q = V*U.block(0,0,U.rows(),neigen);
+		        //q = V*U.block(0,0,U.rows(),neigen);
+		        q = V.block(0, 0, V.rows(), search_space) * U;
 
 		        // residue and correction vectors
-		        for (int j=0; j<neigen; j++) {   
+		        nupdate = 0;
+		        for (int j=0; j<size_update; j++) {   
 
-		        	// (not root_converged[j]) {
+		        	if (root_converged[j]) continue;
+		        	nupdate += 1;
 
-			            // residue vector
-			            w = A*q.col(j) - lambda(j)*q.col(j);
-			            res_norm[j] = w.norm();
+		            // residue vector
+		            w = A*q.col(j) - lambda(j)*q.col(j);
+		            res_norm[j] = w.norm();
 
-			            // jacobi-davidson correction
-			            if (this->correction == CORR::JACOBI) {
-			                tmp = q.col(j);
-			                w = DavidsonSolver::_jacobi_correction<MatrixReplacement>(A,w,tmp,lambda(j));
-			            }
+		            // jacobi-davidson correction
+		            if (this->correction == CORR::JACOBI) {
+		                tmp = q.col(j);
+		                w = DavidsonSolver::_jacobi_correction<MatrixReplacement>(A,w,tmp,lambda(j));
+		            }
 
-			            else if (this->correction == CORR::OLSEN) {
-			            	tmp = q.col(j);
-			                w = DavidsonSolver::_olsen_correction(w,tmp,Adiag,lambda(j));
-			            }
-			            
-			            // Davidson DPR
-			            else  {
-			                w = DavidsonSolver::_dpr_correction(w,Adiag,lambda(j));
-			            }
+		            else if (this->correction == CORR::OLSEN) {
+		            	tmp = q.col(j);
+		                w = DavidsonSolver::_olsen_correction(w,tmp,Adiag,lambda(j));
+		            }
+		            
+		            // Davidson DPR
+		            else  {
+		                w = DavidsonSolver::_dpr_correction(w,Adiag,lambda(j));
+		            }
 
-			            // append the correction vector to the search space
-			            V.conservativeResize(Eigen::NoChange,V.cols()+1);
-			            V.col(V.cols()-1) = w.normalized();
+		            // append the correction vector to the search space
+		            V.conservativeResize(Eigen::NoChange,V.cols()+1);
+		            V.col(V.cols()-1) = w.normalized();
 
-			            // check the root
-			            root_converged[j] = res_norm[j] < tol;
-			        //}
+		            // check the root
+		            root_converged[j] = res_norm[j] < tol;
 		            
 		        }
 
 		        // eigenvalue norm
 		        lambda_conv = (lambda.head(neigen)-old_val).array().abs();
-		        printf("%4d\t%12d\t%4.2e\t%4.2e\t%4.1f%% converged\n", iiter,search_space,res_norm.maxCoeff(),lambda_conv.maxCoeff(),100*root_converged.sum()/neigen);
+		        printf("%4d\t%12d\t%4.2e\t\t%4.1f%% converged\n", iiter,search_space,res_norm.head(neigen).maxCoeff(),100*root_converged.head(neigen).sum()/neigen);
 
 		        // update 
 		        search_space = V.cols();
-		        old_val = lambda.head(neigen);
 		        		       
 		        // break if converged, update otherwise
-		        if((res_norm<tol).all()) {
-		        //if((lambda_conv<tol).all()) {
+		        if((res_norm.head(neigen)<tol).all()) {
 		            has_converged = true;
 		            break;
 		        }
@@ -142,11 +146,11 @@ class DavidsonSolver
 		        if (search_space > max_search_space or search_space > size )
 		        {
 
-		            V = q.block(0,0,V.rows(),neigen);
+		            V = q.leftCols(size_initial_guess);
 		            for (int j=0; j<neigen; j++) {
 		                V.col(j) = V.col(j).normalized();
 		            }
-		            search_space = neigen;
+		            search_space = size_initial_guess;
 
 		            // recompute the projected matrix
 		            T = V.transpose()*(A * V);
@@ -156,8 +160,7 @@ class DavidsonSolver
 		        else
 		        {
 		            // orthogonalize the V vectors
-		            //V = DavidsonSolver::_QR(V);
-		            V = DavidsonSolver::_gramschmidt(V,V.cols()-neigen);
+		            V = DavidsonSolver::_gramschmidt(V,V.cols()-nupdate);
 
 		            // update the T matrix : avoid recomputing V.T A V 
 		            // just recompute the element relative to the new eigenvectors
@@ -169,7 +172,7 @@ class DavidsonSolver
 
 		    // store the eigenvalues/eigenvectors
 		    this->_eigenvalues = lambda.head(neigen);
-		    this->_eigenvectors = q.block(0,0,q.rows(),neigen);
+		    this->_eigenvectors = q.leftCols(neigen);
 
 		    // normalize the eigenvectors
 		    for (int i=0; i<neigen; i++){
@@ -185,7 +188,6 @@ class DavidsonSolver
 		    else   {
 		        std::cout << "- Davidson converged " <<  std::endl; 
 		        printf("- final residue norm %4.2e\n",res_norm.maxCoeff());
-		        printf("- final eigenvalue norm %4.2e\n",lambda_conv.maxCoeff());
 		    }
 		    std::cout << "-----------------------------------" << std::endl;
 		    
