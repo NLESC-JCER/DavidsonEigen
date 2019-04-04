@@ -61,7 +61,6 @@ class DavidsonSolver
 		    // initialize the guess eigenvector
 		    Eigen::VectorXd Adiag = A.diagonal();    
 		    Eigen::MatrixXd V = DavidsonSolver::_get_initial_eigenvectors(Adiag,size_initial_guess);
-		    
 
 		    Eigen::VectorXd lambda; // eigenvalues hodlers
 		    Eigen::VectorXd old_val = Eigen::VectorXd::Zero(neigen);
@@ -159,7 +158,7 @@ class DavidsonSolver
 		            // orthogonalize the V vectors
 		            //V = DavidsonSolver::_QR(V);
 		            V = DavidsonSolver::_gramschmidt(V,V.cols()-neigen);
-		            
+
 		            // update the T matrix : avoid recomputing V.T A V 
 		            // just recompute the element relative to the new eigenvectors
 		            DavidsonSolver::_update_projected_matrix<MatrixReplacement>(T,A,V);
