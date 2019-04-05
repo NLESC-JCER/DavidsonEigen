@@ -73,7 +73,7 @@ int main (int argc, char *argv[]){
         ("corr", "correction method", cxxopts::value<std::string>()->default_value("DPR"))
         ("mf", "use matrix free", cxxopts::value<bool>())
         ("diag", "diagonal elements are ordered" , cxxopts::value<bool>())
-        ("reorder", "reorder diagonal elements" , cxxopts::value<bool>())
+        ("ortho", "method to orthogonalize the vectors (GS,QR)", cxxopts::value<std::string>()->default_value("GS"))
         ("linsolve", "method to solve the linear system of JOCC (CG, GMRES, LLT)", cxxopts::value<std::string>()->default_value("CG"))
         ("init", "method to itialize the eigenvector (target, indentity, random)", cxxopts::value<std::string>()->default_value("target"))
         ("tol", "tolerance on the residue norm", cxxopts::value<std::string>()->default_value("1E-4"))
@@ -92,7 +92,8 @@ int main (int argc, char *argv[]){
     int neigen = std::stoi(result["neigen"].as<std::string>(),nullptr);
     bool mf = result["mf"].as<bool>();
     bool odiag = result["diag"].as<bool>();
-    bool reorder = result["reorder"].as<bool>();
+
+    std::string ortho = result["ortho"].as<std::string>();
     std::string linsolve = result["linsolve"].as<std::string>();
     std::string eigen_init = result["init"].as<std::string>();
     std::string correction = result["corr"].as<std::string>();
@@ -110,7 +111,7 @@ int main (int argc, char *argv[]){
     std::cout << "eps : " <<  eps << std::endl;
 
     // Create Operator
-    DavidsonOperator Aop(size,eps,odiag,reorder);
+    DavidsonOperator Aop(size,eps,odiag);
     Eigen::MatrixXd Afull = Aop.get_full_mat();
     std::cout << "Afull" << std::endl << Afull.block(0,0,5,5) << std::endl;
 
@@ -121,6 +122,7 @@ int main (int argc, char *argv[]){
     DS.set_guess_vectors(eigen_init);
     DS.set_correction(correction);
     DS.set_tolerance(davidson_tol);
+    DS.set_ortho(ortho);
 
     if (correction == "JACOBI") {
         DS.set_jacobi_linsolve(linsolve);

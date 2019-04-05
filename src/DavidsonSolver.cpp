@@ -12,6 +12,11 @@
 
 DavidsonSolver::DavidsonSolver(){}
 
+void DavidsonSolver::set_ortho(std::string method) {
+    if (method == "GS") this->ortho = ORTHO::GS;
+    else if (method == "QR") this->ortho = ORTHO::QR;
+    else throw std::runtime_error("Not a valid orthogonalization method");
+}
 
 void DavidsonSolver::set_correction(std::string method) {
     if (method == "DPR") this->correction = CORR::DPR;
@@ -146,8 +151,8 @@ Eigen::MatrixXd DavidsonSolver::_gramschmidt( Eigen::MatrixXd &A, int nstart ) c
         // Replace inner loop over each previous vector in Q with fast matrix-vector multiplication
         Q.col(j) -= Q.leftCols(j) * (Q.leftCols(j).transpose() * A.col(j));
         // Normalize vector if possible (othw. means colums of A almsost lin. dep.
-        if( Q.col(j).norm() <= 10e-14 * A.col(j).norm() ) {
-            std::cerr << "Gram-Schmidt failed because A has lin. dep columns. Bye." << std::endl;
+        if( Q.col(j).norm() <= 1E-6 * A.col(j).norm() ) {
+            throw std::runtime_error("Gram-Schmidt failed because of linear dependencies. Try --ortho QR");
             break;
         } else {
             Q.col(j).normalize();

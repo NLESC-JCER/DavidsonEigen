@@ -10,7 +10,7 @@ class DavidsonOperator : public MatrixFreeOperator
 {
 	public: 
 
-		DavidsonOperator(int n, double eps, bool d, bool reorder);
+		DavidsonOperator(int n, double eps, bool d);
 		Eigen::VectorXd col(int index) const;
 		Eigen::ArrayXd _sort_index(Eigen::VectorXd& V) const;	
 		Eigen::VectorXd reorder_col(Eigen::VectorXd& col) const;
@@ -18,8 +18,7 @@ class DavidsonOperator : public MatrixFreeOperator
 	private:
 		double _sparsity = 0.1;
 		bool _odiag = false;
-		bool _reorder;
-		Eigen::ArrayXd _order_index;
+	
 };
 
 #endif

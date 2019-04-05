@@ -6,12 +6,11 @@
 
 
 // constructors
-DavidsonOperator::DavidsonOperator(int size, double eps, bool odiag, bool reorder)
+DavidsonOperator::DavidsonOperator(int size, double eps, bool odiag)
 {
     _size = size;
     _odiag = odiag;
     _sparsity = eps;
-    _reorder = reorder;
 
     diag_el = Eigen::VectorXd(_size);
     for (int i=0; i<_size;i++){
@@ -19,8 +18,6 @@ DavidsonOperator::DavidsonOperator(int size, double eps, bool odiag, bool reorde
         else diag_el(i) = static_cast<double> (1. + (std::rand() %1000 ) / 10.);
     }
     
-    if (_reorder)
-        _order_index = DavidsonOperator::_sort_index(diag_el);
 } 
 
 Eigen::ArrayXd DavidsonOperator::_sort_index(Eigen::VectorXd& V) const
@@ -31,20 +28,11 @@ Eigen::ArrayXd DavidsonOperator::_sort_index(Eigen::VectorXd& V) const
     return idx; 
 }
 
-Eigen::VectorXd DavidsonOperator::reorder_col(Eigen::VectorXd& col) const
-{
-    Eigen::VectorXd out = Eigen::VectorXd::Zero(_size,1);
-    for (int j=0; j < _size; j++)
-        out(j) = col(_order_index(j));
-    return out;
-}  
-
 //  get a col of the operator
 Eigen::VectorXd DavidsonOperator::col(int index_orig) const
 {
     int index = index_orig;
-    if (_reorder)
-        index = _order_index(index_orig);
+    
     Eigen::VectorXd col_out = Eigen::VectorXd::Zero(_size,1);    
     for (int j=0; j < _size; j++)
     {
@@ -55,9 +43,6 @@ Eigen::VectorXd DavidsonOperator::col(int index_orig) const
             col_out(j) = _sparsity / std::pow( static_cast<double>(j-index),2) ;
         }
     }
-
-    if (_reorder)
-        col_out = DavidsonOperator::reorder_col(col_out);
 
     return col_out;
 

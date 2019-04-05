@@ -21,6 +21,7 @@ class DavidsonSolver
 
 		void set_correction(std::string method); 
 		void set_jacobi_linsolve(std::string method);
+		void set_ortho(std::string method);
 
 		Eigen::VectorXd eigenvalues() const {return this->_eigenvalues;}
 		Eigen::MatrixXd eigenvectors() const {return this->_eigenvectors;}
@@ -90,8 +91,8 @@ class DavidsonSolver
 		        U = es.eigenvectors();
 
 		        // Ritz eigenvectors
-		        //q = V*U.block(0,0,U.rows(),neigen);
-		        q = V.block(0, 0, V.rows(), search_space) * U;
+		        q = V*U.block(0,0,U.rows(),neigen);
+		        //q = V.block(0, 0, V.rows(), search_space) * U;
 
 		        // residue and correction vectors
 		        nupdate = 0;
@@ -105,19 +106,19 @@ class DavidsonSolver
 		            res_norm[j] = w.norm();
 
 		            // jacobi-davidson correction
-		            if (this->correction == CORR::JACOBI) {
-		                tmp = q.col(j);
-		                w = DavidsonSolver::_jacobi_correction<MatrixReplacement>(A,w,tmp,lambda(j));
-		            }
-
-		            else if (this->correction == CORR::OLSEN) {
-		            	tmp = q.col(j);
-		                w = DavidsonSolver::_olsen_correction(w,tmp,Adiag,lambda(j));
-		            }
+		            switch(this->correction) {
+		            	case CORR::JACOBI:
+			                tmp = q.col(j);
+			                w = DavidsonSolver::_jacobi_correction<MatrixReplacement>(A,w,tmp,lambda(j));
 		            
-		            // Davidson DPR
-		            else  {
-		                w = DavidsonSolver::_dpr_correction(w,Adiag,lambda(j));
+
+		            	case CORR::OLSEN:
+			            	tmp = q.col(j);
+			                w = DavidsonSolver::_olsen_correction(w,tmp,Adiag,lambda(j));
+		            
+		            
+		            	case CORR::DPR:	
+		                	w = DavidsonSolver::_dpr_correction(w,Adiag,lambda(j));
 		            }
 
 		            // append the correction vector to the search space
@@ -158,12 +159,17 @@ class DavidsonSolver
 		        // continue otherwise
 		        else
 		        {
-		            // orthogonalize the V vectors
-		            V = DavidsonSolver::_gramschmidt(V,V.cols()-nupdate);
+		        	switch (this->ortho) {
+		        		case ORTHO::GS:
+				            V = DavidsonSolver::_gramschmidt(V,V.cols()-nupdate);
+				        	DavidsonSolver::_update_projected_matrix<MatrixReplacement>(T,A,V);
+		            		break;
 
-		            // update the T matrix : avoid recomputing V.T A V 
-		            // just recompute the element relative to the new eigenvectors
-		            DavidsonSolver::_update_projected_matrix<MatrixReplacement>(T,A,V);
+		            	case ORTHO::QR:
+				            V = DavidsonSolver::_QR(V);
+				            T = V.transpose()*(A * V);
+		            		break;
+		            }
 		            
 		        }
 		        
@@ -204,11 +210,11 @@ class DavidsonSolver
 		std::string guess_vectors = "target";
 		enum CORR {DPR,JACOBI,OLSEN};
 		enum LSOLVE {CG,GMRES,LLT};
+		enum ORTHO {GS,QR};
 		
 		CORR correction = CORR::DPR;
 		LSOLVE jacobi_linsolve = LSOLVE::CG;
-
-
+		ORTHO ortho = ORTHO::GS;
 
 		Eigen::VectorXd _eigenvalues;
 		Eigen::MatrixXd _eigenvectors; 
